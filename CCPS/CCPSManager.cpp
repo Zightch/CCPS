@@ -148,14 +148,10 @@ unsigned long long CCPSManager::getConnectNum() {
 void CCPSManager::sendF_(const QHostAddress& IP, unsigned short port, const QByteArray& data) {
     switch (IP.protocol()) {
         case QAbstractSocket::IPv4Protocol:
-            if (ipv4 != nullptr)
-                ipv4->writeDatagram(data, IP, port);
-            else emit cLog("IPv4未启动");
+            if (ipv4 != nullptr)ipv4->writeDatagram(data, IP, port);
             break;
         case QAbstractSocket::IPv6Protocol:
-            if (ipv6 != nullptr)
-                ipv6->writeDatagram(data, IP, port);
-            else emit cLog("IPv6未启动");
+            if (ipv6 != nullptr)ipv6->writeDatagram(data, IP, port);
             break;
         default:
             break;

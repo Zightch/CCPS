@@ -46,8 +46,6 @@ signals:
 
     void connected(void *);//连接成功(包含我方主动与对方请求)
 
-    void cLog(const QByteArray &);
-
 private:
 signals:
 
