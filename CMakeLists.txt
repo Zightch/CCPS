@@ -6,10 +6,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if (WIN32)
     set(CMAKE_PREFIX_PATH "E:\\Qt\\6.6.0\\mingw_64\\lib\\cmake")
-    set(libs crypt)
 elseif(UNIX)
     set(CMAKE_PREFIX_PATH "/opt/Qt/6.6.0/gcc_64/lib/cmake")
-    set(libs libcrypt.so.3)
+else()
+    message(FATAL_ERROR "不支持的操作系统类型")
 endif ()
 
 set(CMAKE_AUTOUIC ON)
@@ -22,7 +22,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(./include)
 include_directories(./${projectName})
 
-link_directories(libs)
+link_directories(./libs)
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Network REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network REQUIRED)
@@ -41,5 +41,5 @@ target_link_libraries(
         ${projectName}
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Network
-        ${libs}
+        crypto
 )
