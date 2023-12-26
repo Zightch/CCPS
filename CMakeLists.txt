@@ -6,8 +6,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if (WIN32)
     set(CMAKE_PREFIX_PATH "E:\\Qt\\6.6.0\\mingw_64\\lib\\cmake")
+    set(libs crypt)
 elseif(UNIX)
     set(CMAKE_PREFIX_PATH "/opt/Qt/6.6.0/gcc_64/lib/cmake")
+    set(libs libcrypt.so.3)
 endif ()
 
 set(CMAKE_AUTOUIC ON)
@@ -39,5 +41,5 @@ target_link_libraries(
         ${projectName}
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Network
-        crypto
+        ${libs}
 )
