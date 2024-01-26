@@ -20,7 +20,7 @@ void CCPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByte
         tmp.append(error.get(), (qsizetype) error.size());
         emit sendS_(IP, port, tmp);
     };
-    auto ipPort = IPPort(IP, port);
+    auto ipPort = toIPPort(IP, port);
     if (ipPort.isEmpty()) {
         ef("IP协议不匹配");
         emit requestInvalid(IP, port);
@@ -162,14 +162,14 @@ void CCPSManager::connectFail_(const QByteArray& data) {
     CCPS *c = (CCPS *) sender();
     QHostAddress IP = c->IP;
     unsigned short port = c->port;
-    connecting.remove(IPPort(IP, port));
+    connecting.remove(toIPPort(IP, port));
     delete c;
     emit connectFail(IP, port, data);
 }
 
 void CCPSManager::connected_() {
     CCPS *c = (CCPS *) sender();
-    QByteArray key = IPPort(c->IP, c->port);
+    QByteArray key = toIPPort(c->IP, c->port);
     connecting.remove(key);
     if (ccps.size() < connectNum) {
         disconnect(c, &CCPS::disconnected, nullptr, nullptr);
@@ -241,7 +241,7 @@ void CCPSManager::createConnection(const QByteArray &IP, unsigned short port) {
             return;
         }
     }
-    auto ipTmp = IPPort(QHostAddress(IP), port);
+    auto ipTmp = toIPPort(QHostAddress(IP), port);
     if (ccps.exist(ipTmp)) {
         emit connected(ccps[ipTmp]);
         return;
@@ -266,7 +266,7 @@ QByteArray CCPSManager::udpError() const {
 void CCPSManager::rmCCPS_() {
     auto c = (CCPS *) sender();
     if (c != nullptr) {
-        auto ipPort = IPPort(c->IP, c->port);
+        auto ipPort = toIPPort(c->IP, c->port);
         ccps.remove(ipPort);
         connecting.remove(ipPort);
         c->deleteLater();
@@ -275,7 +275,7 @@ void CCPSManager::rmCCPS_() {
 
 void CCPSManager::requestInvalid_(const QByteArray&) {
     auto c = (CCPS *) sender();
-    ccps.remove(IPPort(c->IP, c->port));
+    ccps.remove(toIPPort(c->IP, c->port));
     emit requestInvalid(c->IP, c->port);
     delete c;
 }

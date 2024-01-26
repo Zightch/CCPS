@@ -7,7 +7,7 @@ namespace IPTools {
     QMutex IPPort;
 }
 
-QByteArray IPPort(const QHostAddress &addr, unsigned short port) {
+QByteArray toIPPort(const QHostAddress &addr, unsigned short port) {
     QMutexLocker ml(&IPTools::IPPort);
     QByteArray tmp = "";
     QByteArray ip = addr.toString().toLocal8Bit();

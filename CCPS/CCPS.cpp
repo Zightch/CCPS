@@ -21,7 +21,16 @@ CCPS::CCPS(QObject *parent, const QHostAddress&IP, unsigned short p) : QObject(p
 }
 
 void CCPS::close(const QByteArray &data) {
-    if (cs == 1) {
+    readBuf.append(data);
+    for (const auto &i: sendWnd)
+        i->stop();
+    sendWnd.clear();
+    for (const auto &i: sendBuf)
+        i->stop();
+    sendBuf.clear();
+    recvWnd.clear();
+    hbt.stop();
+    if (cs != -1) {
         auto *cdpt = new CDPT(this);
         cdpt->cf = 0x24;
         if (!data.isEmpty()) {
@@ -33,17 +42,8 @@ void CCPS::close(const QByteArray &data) {
         key = nullptr;
         sharedKey.clear();
         cs = -1;
+        emit disconnected(data);
     }
-    readBuf.append(data);
-    for (const auto &i: sendWnd)
-        i->stop();
-    sendWnd.clear();
-    for (const auto &i: sendBuf)
-        i->stop();
-    sendBuf.clear();
-    recvWnd.clear();
-    hbt.stop();
-    emit disconnected(data);
 }
 
 void CCPS::procF_(const QByteArray &data) {
@@ -180,7 +180,7 @@ void CCPS::procF_(const QByteArray &data) {
                     hbt.stop();
                     cs = -1;
                     emit disconnected(userData);
-                    break;
+                    return;
                 }
                 case 5: {
                     if (cs != 1)
@@ -360,6 +360,7 @@ void CCPS::sendTimeout_() {
         hbt.stop();
         cs = -1;
         emit disconnected("对方应答超时");
+        return;
     }
     updateWnd_();
 }

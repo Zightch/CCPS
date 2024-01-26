@@ -9,4 +9,4 @@
 class QByteArray;
 class QHostAddress;
 
-QByteArray CCPS_DLL IPPort(const QHostAddress &, unsigned short);
+QByteArray CCPS_DLL toIPPort(const QHostAddress &, unsigned short);
