@@ -18,10 +18,6 @@ class CCPS_DLL CCPS : public QObject {
 Q_OBJECT
 
 public:
-    explicit CCPS(QObject *, const QHostAddress &, unsigned short);
-
-    ~CCPS() override;
-
     void close(const QByteArray & = "");
 
     void sendNow(const QByteArray &);
@@ -61,7 +57,15 @@ signals:
 
     void connected_();
 
+    void disconnected_(const QByteArray &);
+
+    void deleteRedelay_();
+
 private:
+    explicit CCPS(QObject *, const QHostAddress &, unsigned short);
+
+    ~CCPS() override;
+
     void connect_();
 
     void procF_(const QByteArray &);

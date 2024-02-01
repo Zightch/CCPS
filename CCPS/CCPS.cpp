@@ -10,6 +10,7 @@
 CCPS::CCPS(QObject *parent, const QHostAddress&IP, unsigned short p) : QObject(parent), IP(IP), port(p) {
     cm = ((CCPSManager *) parent);
     connect(this, &CCPS::procS_, this, &CCPS::procF_, Qt::QueuedConnection);
+    connect(this, &CCPS::deleteRedelay_, this, &CCPS::deleteLater, Qt::QueuedConnection);
     connect(&hbt, &QTimer::timeout, this, [&]() {
         if (cs != 1) return;
         auto *cdpt = new CDPT(this);
@@ -21,7 +22,6 @@ CCPS::CCPS(QObject *parent, const QHostAddress&IP, unsigned short p) : QObject(p
 }
 
 void CCPS::close(const QByteArray &data) {
-    readBuf.append(data);
     for (const auto &i: sendWnd)
         i->stop();
     sendWnd.clear();
@@ -41,9 +41,12 @@ void CCPS::close(const QByteArray &data) {
         EVP_PKEY_free((EVP_PKEY *) key);
         key = nullptr;
         sharedKey.clear();
+        auto tmp = cs;
         cs = -1;
-        emit disconnected(data);
+        if (tmp == 1) emit disconnected(data);
     }
+    emit disconnected_(data);
+    emit deleteRedelay_();
 }
 
 void CCPS::procF_(const QByteArray &data) {
@@ -169,7 +172,6 @@ void CCPS::procF_(const QByteArray &data) {
                     EVP_PKEY_free((EVP_PKEY *) key);
                     key = nullptr;
                     sharedKey.clear();
-                    readBuf.append(userData);
                     for (const auto &i: sendWnd)
                         i->stop();
                     sendWnd.clear();
@@ -180,6 +182,8 @@ void CCPS::procF_(const QByteArray &data) {
                     hbt.stop();
                     cs = -1;
                     emit disconnected(userData);
+                    emit disconnected_(data);
+                    emit deleteRedelay_();
                     return;
                 }
                 case 5: {
@@ -310,12 +314,16 @@ void CCPS::connect_() {
     key = genX25519Key();
     if (key == nullptr) {
         emit disconnected("密钥对生成失败");
+        emit disconnected_("密钥对生成失败");
+        emit deleteRedelay_();
         return;
     }
 
     auto pubKey = getPubKey(key);
     if (pubKey.isEmpty()) {
         emit disconnected("公钥获取失败");
+        emit disconnected_("公钥获取失败");
+        emit deleteRedelay_();
         return;
     }
 
@@ -349,7 +357,6 @@ void CCPS::sendTimeout_() {
         EVP_PKEY_free((EVP_PKEY *) key);
         key = nullptr;
         sharedKey.clear();
-        readBuf.append("对方应答超时");
         for (const auto &i: sendWnd)
             i->stop();
         sendWnd.clear();
@@ -358,8 +365,11 @@ void CCPS::sendTimeout_() {
         sendBuf.clear();
         recvWnd.clear();
         hbt.stop();
+        auto tmp = cs;
         cs = -1;
-        emit disconnected("对方应答超时");
+        if (tmp == 1) emit disconnected("对方应答超时");
+        emit disconnected_("对方应答超时");
+        emit deleteRedelay_();
         return;
     }
     updateWnd_();
