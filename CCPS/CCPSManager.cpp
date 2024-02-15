@@ -85,7 +85,7 @@ void CCPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByte
     auto tmp = new CCPS(this, IP, port);
     connecting[ipPort] = tmp;
     connect(tmp, &CCPS::connected_, this, &CCPSManager::connected_);
-    connect(tmp, &CCPS::disconnected_, this, &CCPSManager::requestInvalid_);
+    connect(tmp, &CCPS::disconnectedForCM_, this, &CCPSManager::requestInvalid_);
     emit tmp->procS_(data);
 }
 
@@ -160,20 +160,18 @@ void CCPSManager::sendF_(const QHostAddress& IP, unsigned short port, const QByt
 
 void CCPSManager::connectFail_(const QByteArray& data) {
     CCPS *c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnected_, nullptr, nullptr);
-    QHostAddress IP = c->IP;
-    unsigned short port = c->port;
-    connecting.remove(toIPPort(IP, port));
-    emit connectFail(IP, port, data);
+    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
+    connecting.remove(toIPPort(c->IP, c->port));
+    emit connectFail(c->IP, c->port, data);
 }
 
 void CCPSManager::connected_() {
     CCPS *c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnected_, nullptr, nullptr);
+    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
     QByteArray key = toIPPort(c->IP, c->port);
     connecting.remove(key);
     if (ccps.size() < connectNum) {
-        connect(c, &CCPS::disconnected_, this, &CCPSManager::rmCCPS_);
+        connect(c, &CCPS::disconnectedForCM_, this, &CCPSManager::rmCCPS_);
         ccps[key] = c;
         emit connected(c);
     } else {
@@ -188,7 +186,7 @@ void CCPSManager::connected_() {
 
 void CCPSManager::close() {
     auto callBack = [](CCPS *&i, const char *) {
-        disconnect(i, &CCPS::disconnected_, nullptr, nullptr);
+        disconnect(i, &CCPS::disconnectedForCM_, nullptr, nullptr);
         i->close("管理器服务关闭");
     };
     connecting.traverse(callBack);
@@ -204,9 +202,9 @@ void CCPSManager::close() {
 int CCPSManager::isBind() {
     int tmp = 0;
     if (ipv4 != nullptr)
-        tmp++;
+        tmp |= 1;
     if (ipv6 != nullptr)
-        tmp++;
+        tmp |= 2;
     return tmp;
 }
 
@@ -250,7 +248,7 @@ void CCPSManager::createConnection(const QByteArray &IP, unsigned short port) {
         auto tmp = new CCPS(this, QHostAddress(IP), port);
         connecting[ipTmp] = tmp;
         connect(tmp, &CCPS::connected_, this, &CCPSManager::connected_);
-        connect(tmp, &CCPS::disconnected_, this, &CCPSManager::connectFail_);
+        connect(tmp, &CCPS::disconnectedForCM_, this, &CCPSManager::connectFail_);
         tmp->connect_();
     }
 }
@@ -261,18 +259,15 @@ QByteArray CCPSManager::udpError() const {
 
 void CCPSManager::rmCCPS_() {
     auto c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnected_, nullptr, nullptr);
-    if (c != nullptr) {
-        auto ipPort = toIPPort(c->IP, c->port);
-        ccps.remove(ipPort);
-        connecting.remove(ipPort);
-    }
+    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
+    auto ipPort = toIPPort(c->IP, c->port);
+    ccps.remove(ipPort);
 }
 
 void CCPSManager::requestInvalid_(const QByteArray&) {
     auto c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnected_, nullptr, nullptr);
-    ccps.remove(toIPPort(c->IP, c->port));
+    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
+    connecting.remove(toIPPort(c->IP, c->port));
     emit requestInvalid(c->IP, c->port);
 }
 
@@ -283,7 +278,6 @@ void CCPSManager::recv_() {
         auto IP = datagrams.senderAddress();
         auto port = datagrams.senderPort();
         auto data = datagrams.data();
-        if (data.size() >= 45)
-            proc_(IP, port, data);
+        if (data.size() >= 45) proc_(IP, port, data);
     }
 }

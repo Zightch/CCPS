@@ -2,6 +2,7 @@
 #include "CCPSManager.h"
 #include "tools/Dump.h"
 #include "tools/Key.h"
+#include "tools/IP.h"
 #include <QDateTime>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -45,7 +46,7 @@ void CCPS::close(const QByteArray &data) {
         cs = -1;
         if (tmp == 1) emit disconnected(data);
     }
-    emit disconnected_(data);
+    emit disconnectedForCM_(data);
     emit deleteRedelay_();
 }
 
@@ -182,7 +183,7 @@ void CCPS::procF_(const QByteArray &data) {
                     hbt.stop();
                     cs = -1;
                     emit disconnected(userData);
-                    emit disconnected_(data);
+                    emit disconnectedForCM_(data);
                     emit deleteRedelay_();
                     return;
                 }
@@ -314,7 +315,7 @@ void CCPS::connect_() {
     key = genX25519Key();
     if (key == nullptr) {
         emit disconnected("密钥对生成失败");
-        emit disconnected_("密钥对生成失败");
+        emit disconnectedForCM_("密钥对生成失败");
         emit deleteRedelay_();
         return;
     }
@@ -322,7 +323,7 @@ void CCPS::connect_() {
     auto pubKey = getPubKey(key);
     if (pubKey.isEmpty()) {
         emit disconnected("公钥获取失败");
-        emit disconnected_("公钥获取失败");
+        emit disconnectedForCM_("公钥获取失败");
         emit deleteRedelay_();
         return;
     }
@@ -368,7 +369,7 @@ void CCPS::sendTimeout_() {
         auto tmp = cs;
         cs = -1;
         if (tmp == 1) emit disconnected("对方应答超时");
-        emit disconnected_("对方应答超时");
+        emit disconnectedForCM_("对方应答超时");
         emit deleteRedelay_();
         return;
     }

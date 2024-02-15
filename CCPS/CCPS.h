@@ -43,23 +43,19 @@ public:
     [[nodiscard]]
     unsigned short getPort() const;
 
-public:
 signals:
-
     void disconnected(const QByteArray & = "");
 
     void readyRead();
 
-private:
-signals:
-
     void procS_(const QByteArray &);
+
+    void deleteRedelay_();
 
     void connected_();
 
-    void disconnected_(const QByteArray &);
+    void disconnectedForCM_(const QByteArray &);
 
-    void deleteRedelay_();
 
 private:
     explicit CCPS(QObject *, const QHostAddress &, unsigned short);
