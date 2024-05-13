@@ -18,11 +18,15 @@ int readAll(char *file_path, char **data) {
     size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     *data = malloc(size);
-    if (*data == NULL)return -2;
+    if (*data == NULL) {
+        fclose(fp);
+        return -2;
+    }
     size_t result = fread(*data, 1, size, fp);
     if (result != size) {
         free(*data);
         *data = NULL;
+        fclose(fp);
         return -3;
     }
     fclose(fp);
