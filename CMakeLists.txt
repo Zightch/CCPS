@@ -8,12 +8,12 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 add_executable(
-        genCAKey
-        genCAKey.c
+        gen-ca-key
+        gen-ca-key.c
 )
 
 target_link_libraries(
-        genCAKey
+        gen-ca-key
         ${LIB_EAY}
 )
 
@@ -35,4 +35,22 @@ add_executable(
 target_link_libraries(
         verify
         ${LIB_EAY}
+)
+
+add_executable(
+        gen-cert
+        gen-cert.c
+)
+
+if(WIN32)
+    set(gen-cert-link ${LIB_EAY} ws2_32)
+elseif(UNIX)
+    set(gen-cert-link ${LIB_EAY})
+else()
+    message(FATAL_ERROR 未知平台)
+endif()
+
+target_link_libraries(
+        gen-cert
+        ${gen-cert-link}
 )

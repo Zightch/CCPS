@@ -1,7 +1,7 @@
 /* sign
  * 签名
- * sing <私钥文件> <证书文件>
- * 执行后如果没问题会生成"证书文件.sign"
+ * sing <私钥文件> <证书公钥>
+ * 执行后如果没问题会生成"证书文件.cert"
  */
 
 #include <stdio.h>
@@ -72,12 +72,12 @@ int sign(unsigned char* message, int msg_len, EVP_PKEY* privkey, unsigned char**
 
 char *prepare_sign_file_path(const char *cert_path) {
     char *last_dot = strrchr(cert_path, '.');
-    size_t new_path_length = last_dot ? (last_dot - cert_path) + strlen(".sign") + 1 : strlen(cert_path) + strlen(".sign") + 1;
+    size_t new_path_length = last_dot ? (last_dot - cert_path) + strlen(".cert") + 1 : strlen(cert_path) + strlen(".cert") + 1;
     char *sign_file_path = malloc(new_path_length);
     if (!sign_file_path) return NULL;
     strncpy(sign_file_path, cert_path, last_dot ? last_dot - cert_path : strlen(cert_path));
     sign_file_path[last_dot ? last_dot - cert_path : strlen(cert_path)] = 0;
-    strcat(sign_file_path, ".sign");
+    strcat(sign_file_path, ".cert");
     return sign_file_path;
 }
 
@@ -145,6 +145,17 @@ int main(int argc, char **argv) {
     FILE *fp = fopen(sign_file_path, "wb");
     if (!fp) {
         perror("Failed to open signature file for writing");
+        free(sign_file_path);
+        free(signature);
+        EVP_PKEY_free(pkey);
+        free(pkey_file_data);
+        free(cert_file_data);
+        return 1;
+    }
+    if (fwrite(cert_file_data, 1, cert_file_size, fp) != cert_file_size) {
+        perror("Failed to write certificate to file");
+        fclose(fp);
+        remove(sign_file_path); // 删除未完全写入的签名文件
         free(sign_file_path);
         free(signature);
         EVP_PKEY_free(pkey);
