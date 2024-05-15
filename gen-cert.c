@@ -1,25 +1,30 @@
 /* gen-cert
- * 生成X25519公钥证书和私钥文件
+ * 生成公钥证书和私钥文件
  * gen-cert <文件路径> <文本信息> <IP地址> <到期时间>
  * 执行后如果没问题会生成"文件路径.pub"的证书公钥和"文件路径.key"私钥文件
- * 其中"文本信息"必须在15个字节以内, IP地址必须是IPv4或IPv6的地址
- * 到期时间以天位单位
  *
  * 证书文件格式
- *    0 <---------7|8--------> EF
- * 00 |         pub key         |
- * 10 |                         |
- * 20 | start time | valid time |
- * 30 |        text msg        |f
- * 40 |         IP addr         |
+ *    0 <-3|4--7|8------> EF
+ * 00 |       X25519       |
+ * 10 |      pub key       |
+ * 20 |      ED25519       |
+ * 30 |      pub key       |
+ * 40 | st | vt | text msg |
+ * 50 |                    |
+ * 60 |                   |f
+ * 70 |      IP addr       |
  * 其中
- * 00 ~ 1F 为32字节的X25519公钥raw数据
- * 20 ~ 27 为8个字节的证书开始时间, 精确到天; 如何获取? 当前时间戳(精确到秒)/86400, 86400为一天的秒数
- * 28 ~ 2F 为8个字节的证书有效时间, 精确到天
- * 30 ~ 3E 为15个字节的文本信息(如果文本长度不足15字节自动填0以对齐)
- * 3F f为一个字节的IP地址类型, 4表示IPv4, 16表示IPv6; 填写的是IP数字, 例如127.0.0.1的IP数字是2130706433
- * 40 ~ 4F 为16个字节的IP地址(如果是IPv4, 数字只占4个字节, 其余填0; IPv6会把16个字节全部占满)
+ * 00 ~ 1F X25519 pub key  为32字节的X25519公钥raw数据, 用于密钥交换
+ * 20 ~ 3F ED25519 pub key 为32字节的ED25519公钥raw数据, 用于签名; 当该证书为CA证书时, 有这部分数据, 否则23个字节全是0
+ * 40 ~ 43 st       为4个字节的证书开始时间, 精确到天; 如何获取? 当前时间戳(精确到秒)/86400, 86400为一天的秒数
+ * 44 ~ 47 vt       为4个字节的证书有效时间, 精确到天
+ * 48 ~ 6E text msg 为39个字节的文本信息(如果文本长度不足39字节自动填0以对齐)
+ * 6F      f        为1个字节的IP地址类型, 4表示IPv4, 16表示IPv6; 填写的是IP数字, 例如127.0.0.1的IP数字是2130706433
+ * 70 ~ 7F IP addr  为16个字节的IP地址(如果是IPv4, 数字只占4个字节, 其余填0; IPv6会把16个字节全部占满)
+ * 总长度128字节
  * 注意以上数据均为bin数据
+ *
+ * 私钥文件格式与证书相同, 只有00 ~ 3F数据, 没有别的内容
  */
 
 #include <stdio.h>
@@ -38,49 +43,86 @@
 #error 未知的平台
 #endif
 
-#define ED25519_LEN 32
+#define LEN_25519 32
+#define TEXT_MSG_LEN 39
+#define CERT_LEN 0x80
 const char *pub_suffix = ".pub";
 
 int get_ip_type_and_convert(const char *ip_addr, unsigned char *ip_bin, size_t *ip_len);
-int generate_key_pair(unsigned char *pub_key, unsigned char *p_key);
+int generate_key_pair(unsigned char *pub_key, unsigned char *p_key, int id);
 
 int main(int argc, char **argv) {
-    if (argc != 5) {
-        fprintf(stderr, "%s <file path> <text msg> <IP addr> <valid time>\n", argv[0]);
+    if (4 > argc || argc > 6) {
+        fprintf(
+                stderr,
+                "%s <file path> <text msg> <valid time>\n"
+                "%s <file path> <text msg> <valid time> [CA]\n"
+                "%s <file path> <text msg> <valid time> [IP addr]\n"
+                "%s <file path> <text msg> <valid time> [CA] [IP addr]\n\n"
+                "CA is true or false, default is false\n",
+                argv[0], argv[0], argv[0], argv[0]
+        );
         return 1;
     }
 
     // 检查文本
     size_t text_len = strlen(argv[2]);
-    if (text_len > 15) {
-        fprintf(stderr, "Text message must be within 15 bytes.\n");
-        return 1;
-    }
-    // 检查有效期
-    char *end_ptr;
-    long long valid_time = strtol(argv[4], &end_ptr, 10);
-    if (valid_time <= 0 || *end_ptr != '\0') {
-        fprintf(stderr, "Valid time must be a positive number.\n");
-        return 1;
-    }
-    // 转换IP
-    unsigned char ip_bin[16] = {0};
-    size_t ip_len = 0;
-    if (get_ip_type_and_convert(argv[3], ip_bin, &ip_len) <= 0) {
-        fprintf(stderr, "Invalid IP address.\n");
-        return 1;
-    }
-
-    // 生成密钥对
-    unsigned char pub_key[ED25519_LEN] = {0};
-    unsigned char p_key[ED25519_LEN] = {0};
-    if (generate_key_pair(pub_key, p_key) <= 0) {
-        fprintf(stderr, "Failed to generate key pair.\n");
+    if (text_len > TEXT_MSG_LEN) {
+        fprintf(stderr, "Text message must be within %d bytes.\n", TEXT_MSG_LEN);
         return 1;
     }
 
     // 获取开始时间
-    long long start_time = time(NULL) / 86400; // 以天为单位
+    unsigned start_time = time(NULL) / 86400; // 以天为单位
+    // 检查有效期
+    char *end_ptr;
+    long long tmp = strtol(argv[3], &end_ptr, 10);
+    unsigned int valid_time = start_time + tmp;
+    if (valid_time <= 0 || *end_ptr != '\0') {
+        fprintf(stderr, "Valid time must be a positive number.\n");
+        return 1;
+    }
+
+    int CA = 0;
+    unsigned char ip_bin[16] = {0};
+    size_t ip_len = 0;
+    if (argc == 5) {
+        if (strcmp(argv[4], "false") == 0)CA = 0;
+        else if (strcmp(argv[4], "true") == 0)CA = 1;
+        else if (get_ip_type_and_convert(argv[4], ip_bin, &ip_len) <= 0) {
+            fprintf(stderr, "Invalid 4th parameter.\n");
+            return 1;
+        }
+    }
+    if (argc == 6) {
+        if (strcmp(argv[4], "false") == 0)CA = 0;
+        else if (strcmp(argv[4], "true") == 0)CA = 1;
+        else {
+            fprintf(stderr, "Valid time must be true or false.\n");
+            return 1;
+        }
+        if (get_ip_type_and_convert(argv[5], ip_bin, &ip_len) <= 0) {
+            fprintf(stderr, "Invalid IP address.\n");
+            return 1;
+        }
+    }
+
+    // 生成密钥对
+    unsigned char x25519_pub_key[LEN_25519] = {0};
+    unsigned char x25519_p_key[LEN_25519] = {0};
+    if (generate_key_pair(x25519_pub_key, x25519_p_key, EVP_PKEY_X25519) <= 0) {
+        fprintf(stderr, "Failed to generate key pair.\n");
+        return 1;
+    }
+
+    unsigned char ed25519_pub_key[LEN_25519] = {0};
+    unsigned char ed25519_p_key[LEN_25519] = {0};
+    if (CA == 1) {
+        if (generate_key_pair(ed25519_pub_key, ed25519_p_key, EVP_PKEY_ED25519) <= 0) {
+            fprintf(stderr, "Failed to generate key pair.\n");
+            return 1;
+        }
+    }
 
     size_t file_path_len = strlen(argv[1]);
     size_t pub_suffix_len = strlen(pub_suffix);
@@ -95,20 +137,22 @@ int main(int argc, char **argv) {
         free(pub_key_file_path);
         return 1;
     }
-    // 写入公钥
-    size_t wrote_size = fwrite(pub_key, 1, ED25519_LEN, fp);
-    wrote_size += fwrite((char *) &start_time, 1, 8, fp);
-    wrote_size += fwrite((char *) &valid_time, 1, 8, fp);
-    wrote_size += fwrite(argv[2], 1, text_len, fp);
-    if (text_len < 15) {
-        char *fill0 = malloc(15 - text_len);
-        for (int i = 0; i < 15 - text_len; i++)fill0[i] = 0;
-        wrote_size += fwrite(fill0, 1, 15 - text_len, fp);
+
+    size_t wrote_size = 0;
+    wrote_size += fwrite(x25519_pub_key, 1, LEN_25519, fp); // 写入32字节x25519公钥
+    wrote_size += fwrite(ed25519_pub_key, 1, LEN_25519, fp); // 写入32字节ed25519公钥
+    wrote_size += fwrite((char *) &start_time, 1, 4, fp); // 写入4字节开始时间
+    wrote_size += fwrite((char *) &valid_time, 1, 4, fp); // 写入4字节到期时间
+    wrote_size += fwrite(argv[2], 1, text_len, fp); // 写入文本信息
+    if (text_len < TEXT_MSG_LEN) { // 不足补0
+        char *fill0 = malloc(TEXT_MSG_LEN - text_len);
+        for (int i = 0; i < TEXT_MSG_LEN - text_len; i++)fill0[i] = 0;
+        wrote_size += fwrite(fill0, 1, TEXT_MSG_LEN - text_len, fp);
         free(fill0);
     }
-    wrote_size += fwrite((char *) &ip_len, 1, 1, fp);
-    wrote_size += fwrite(ip_bin, 1, 16, fp);
-    if (wrote_size != 0x50) {
+    wrote_size += fwrite((char *) &ip_len, 1, 1, fp); // 写入IP类型
+    wrote_size += fwrite(ip_bin, 1, 16, fp); // 写入IP
+    if (wrote_size != CERT_LEN) { // 检查写入情况
         fprintf(stderr, "Failed to write public key to file");
         fclose(fp);
         remove(pub_key_file_path);
@@ -123,7 +167,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Failed to open %s for writing\n", p_key_file_path);
         return 1;
     }
-    if (fwrite(p_key, 1, ED25519_LEN, fp) != ED25519_LEN) {
+    wrote_size = 0;
+    wrote_size += fwrite(x25519_p_key, 1, LEN_25519, fp);
+    wrote_size += fwrite(ed25519_p_key, 1, LEN_25519, fp);
+    if (wrote_size != LEN_25519 * 2) {
         fprintf(stderr, "Failed to write private key to file");
         fclose(fp);
         remove(p_key_file_path);
@@ -143,6 +190,7 @@ int main(int argc, char **argv) {
  * 返回值0表示转换成功, 非0表示失败
  */
 int get_ip_type_and_convert(const char *ip_addr, unsigned char *ip_bin, size_t *ip_len) {
+    size_t tmp = *ip_len;
 #ifdef _WIN32
     int result = InetPton(AF_INET, ip_addr, ip_bin);
     if (result == 1) {
@@ -154,7 +202,6 @@ int get_ip_type_and_convert(const char *ip_addr, unsigned char *ip_bin, size_t *
         *ip_len = 16;
         return 1;
     }
-    return 0;
 #elif __linux__
     int result = inet_pton(AF_INET, ip_addr, ip_bin);
     if (result == 1) {
@@ -166,15 +213,17 @@ int get_ip_type_and_convert(const char *ip_addr, unsigned char *ip_bin, size_t *
         *ip_len = 16;
         return 1;
     }
-    return 0;
 #else
 #error 未知的平台
 #endif
+    for (int i = 0; i < tmp; i++)ip_bin[i] = 0;
+    *ip_len = 0;
+    return 0;
 }
 
-int generate_key_pair(unsigned char *pub_key, unsigned char *p_key) {
+int generate_key_pair(unsigned char *pub_key, unsigned char *p_key, int id) {
     EVP_PKEY *pkey = NULL;
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, NULL);
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(id, NULL);
     if (!pctx) return 0;
     if (EVP_PKEY_keygen_init(pctx) <= 0) {
         EVP_PKEY_CTX_free(pctx);
@@ -185,7 +234,7 @@ int generate_key_pair(unsigned char *pub_key, unsigned char *p_key) {
         return -2;
     }
     EVP_PKEY_CTX_free(pctx);
-    size_t size = ED25519_LEN;
+    size_t size = LEN_25519;
     if (EVP_PKEY_get_raw_public_key(pkey, pub_key, &size) <= 0) {
         EVP_PKEY_free(pkey);
         return -3;

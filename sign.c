@@ -10,6 +10,9 @@
 #include <openssl/sha.h>
 #include <string.h>
 
+#define LEN_25519 32
+#define CERT_LEN 0x80
+
 int readAll(char *file_path, char **data) {
     int size;
     FILE *fp = fopen(file_path, "rb");
@@ -89,24 +92,36 @@ int main(int argc, char **argv) {
 
     unsigned char *pkey_file_data;
     int pkey_file_size = readAll(argv[1], (char **) &pkey_file_data);
-    if (pkey_file_size <= 0) {
-        free(pkey_file_data);
-        perror("Reading private key file failed");
+    if (pkey_file_size != LEN_25519 * 2) {
+        if (pkey_file_size == -3)free(pkey_file_data);
+        fprintf(stderr, "Reading private key file failed");
         return 1;
     }
 
     char *cert_file_data;
     int cert_file_size = readAll(argv[2], &cert_file_data);
-    if (cert_file_size <= 0) {
-        perror("Reading certificate file failed");
+    if (cert_file_size != CERT_LEN) {
+        fprintf(stderr, "Reading certificate file failed");
+        free(pkey_file_data);
+        if (cert_file_size == -3)free(cert_file_data);
+        return 1;
+    }
+
+    int CA = 0;
+    for (int i = LEN_25519; i < LEN_25519 * 2; i++)
+        if (pkey_file_data[i] == 0)CA++;
+    if (CA == LEN_25519)CA = 0;
+    else CA = 1;
+    if (CA == 0) {
+        fprintf(stderr, "The private key is not CA");
         free(pkey_file_data);
         free(cert_file_data);
         return 1;
     }
 
-    EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, pkey_file_data, pkey_file_size);
+    EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL, pkey_file_data + LEN_25519, LEN_25519);
     if (!pkey) {
-        perror("Failed to load private key");
+        fprintf(stderr, "Failed to load private key");
         free(pkey_file_data);
         free(cert_file_data);
         return 1;
@@ -114,7 +129,7 @@ int main(int argc, char **argv) {
 
     unsigned char hash[SHA512_DIGEST_LENGTH];
     if (!SHA512((unsigned char *) cert_file_data, cert_file_size, hash)) {
-        perror("Failed to calculate SHA-512 hash of certificate");
+        fprintf(stderr, "Failed to calculate SHA-512 hash of certificate");
         EVP_PKEY_free(pkey);
         free(pkey_file_data);
         free(cert_file_data);
@@ -125,7 +140,7 @@ int main(int argc, char **argv) {
     size_t signature_len;
     int ret = sign(hash, SHA512_DIGEST_LENGTH, pkey, &signature, &signature_len);
     if (ret != 1) {
-        perror("Signing failed");
+        fprintf(stderr, "Signing failed");
         EVP_PKEY_free(pkey);
         free(pkey_file_data);
         free(cert_file_data);
@@ -134,7 +149,7 @@ int main(int argc, char **argv) {
 
     char *sign_file_path = prepare_sign_file_path(argv[2]);
     if (!sign_file_path) {
-        perror("Preparing signature file path failed");
+        fprintf(stderr, "Preparing signature file path failed");
         free(signature);
         EVP_PKEY_free(pkey);
         free(pkey_file_data);
@@ -144,7 +159,7 @@ int main(int argc, char **argv) {
 
     FILE *fp = fopen(sign_file_path, "wb");
     if (!fp) {
-        perror("Failed to open signature file for writing");
+        fprintf(stderr, "Failed to open signature file for writing");
         free(sign_file_path);
         free(signature);
         EVP_PKEY_free(pkey);
@@ -153,7 +168,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (fwrite(cert_file_data, 1, cert_file_size, fp) != cert_file_size) {
-        perror("Failed to write certificate to file");
+        fprintf(stderr, "Failed to write certificate to file");
         fclose(fp);
         remove(sign_file_path); // 删除未完全写入的签名文件
         free(sign_file_path);
@@ -164,7 +179,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (fwrite(signature, 1, signature_len, fp) != signature_len) {
-        perror("Failed to write signature to file");
+        fprintf(stderr, "Failed to write signature to file");
         fclose(fp);
         remove(sign_file_path); // 删除未完全写入的签名文件
         free(sign_file_path);

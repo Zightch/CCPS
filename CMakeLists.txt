@@ -8,16 +8,6 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 add_executable(
-        gen-ca-key
-        gen-ca-key.c
-)
-
-target_link_libraries(
-        gen-ca-key
-        ${LIB_EAY}
-)
-
-add_executable(
         sign
         sign.c
 )
