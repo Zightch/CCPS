@@ -52,20 +52,20 @@
         <td>S0</td>
         <td>cf</td>
         <td colspan=2>SID</td>
-        <td colspan=4></td>
+        <td colspan=5></td>
     </tr>
     <tr>
         <td>S1</td>
         <td>cf</td>
         <td colspan=2>AID</td>
-        <td colspan=4></td>
+        <td colspan=5></td>
     </tr>
     <tr>
         <td>S2</td>
         <td>cf</td>
         <td colspan=2>SID</td>
         <td colspan=2>AID</td>
-        <td colspan=2></td>
+        <td colspan=3></td>
     </tr>
     <tr>
         <td>S3</td>
