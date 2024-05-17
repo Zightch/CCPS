@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
-project(cert C)
 
+project(cert C)
 set(CMAKE_C_STANDARD 17)
 
 find_package(OpenSSL REQUIRED)
@@ -43,4 +43,23 @@ endif()
 target_link_libraries(
         gen-cert
         ${gen-cert-link}
+)
+
+add_library(
+        key
+        SHARED
+        key/jni/key.c
+)
+
+if(WIN32)
+    set(key-link E:/OpenSSL/lib64/libcrypto.a ws2_32 crypt32)
+elseif(UNIX)
+    set(key-link E:/OpenSSL/lib64/libcrypto.a)
+else()
+    message(FATAL_ERROR 未知平台)
+endif()
+
+target_link_libraries(
+        key
+        ${key-link}
 )
