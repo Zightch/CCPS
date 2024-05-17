@@ -1,283 +1,211 @@
 #include "CCPSManager.h"
-#include "tools/Dump.h"
-#include "tools/IP.h"
-#include "tools/Key.h"
+#include "tools/tools.h"
 #include "CCPS.h"
-#include <openssl/sha.h>
 #include <QDateTime>
+#include <QUdpSocket>
 #include <QNetworkDatagram>
+#include <QThread>
 
-CCPSManager::CCPSManager(QObject *parent) : QObject(parent) {
-    connect(this, &CCPSManager::sendS_, this, &CCPSManager::sendF_, Qt::QueuedConnection);
-}
+#define THREAD_CHECK(ret) if (!threadCheck_(__FUNCTION__))return ret
 
-void CCPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByteArray &data) {
-    auto ef = [&](const QByteArray &data) {
-        Dump error;
-        error.push((char) 0x64);
-        error.push(data.data(), data.size());
-        QByteArray tmp;
-        tmp.append(error.get(), (qsizetype) error.size());
-        emit sendS_(IP, port, tmp);
-    };
-    auto ipPort = toIPPort(IP, port);
-    if (ipPort.isEmpty()) {
-        ef("IP协议不匹配");
-        emit requestInvalid(IP, port);
+void CCPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByteArray &data) { // 来源于recv_调用, 不会被别的线程调用, 是私有函数
+    auto ipPort = IPPort(IP, port); // 转字符串
+    if (ipPort.isEmpty())return; // 转换失败
+    if (ccp.contains(ipPort) || connecting.contains(ipPort)) { // 如果已经存在对象
+        if (ccp.contains(ipPort))ccp[ipPort]->proc_(data);
+        if (connecting.contains(ipPort))connecting[ipPort]->proc_(data);
         return;
     }
-    if (ccps.exist(ipPort)) {
-        emit ccps[ipPort]->procS_(data);
-        return;
-    }
-    if (connecting.exist(ipPort)) {
-        emit connecting[ipPort]->procS_(data);
-        return;
-    }
-
     const char *dataC = data.data();
-    const auto dataSize = data.size();
-
-    //检查数据是否被篡改
-    {
-        //检查校验和
-        auto c0 = *(unsigned long long *) dataC;
-        QByteArray b;
-        b.append(dataC + 8, dataSize - 8);
-        if (c0 != checksum0(b))//如果无符号校验和不匹配
-            return;
-        auto c1 = *(int *) (dataC + 8);
-        b.clear();
-        b.append(dataC + 12, dataSize - 12);
-        if (c1 != checksum1(b))//如果有符号校验和不匹配
-            return;
-
-        //检查SHA-256
-        b.clear();
-        b.append(dataC + 44, dataSize - 44);
-        unsigned long long s256t[4] = {0};//自己计算的SHA-256
-        auto s256p = (unsigned long long *) (dataC + 12);//对方给的-SHA256
-        SHA256((unsigned char *) b.data(), b.size(), (unsigned char *) s256t);
-        if (s256t[0] != s256p[0] || s256t[1] != s256p[1] || s256t[2] != s256p[2] || s256t[3] != s256p[3])
-            return;
-    }
-    //检查通过
-
-    char cf = dataC[44];
-    if ((cf & 0x07) != 0x01)//如果不是连接请求
-        return;
-    if (data.size() < 47) {
-        ef("数据包不完整");
-        emit requestInvalid(IP, port);
-        return;
-    }
-    unsigned short SID = (*(unsigned short *) (dataC + 45));
-    if (!((!((cf >> 5) & 0x01)) && (SID == 0))) {
-        ef("数据内容不符合规范");
-        emit requestInvalid(IP, port);
-        return;
-    }
-    if (ccps.size() >= connectNum) {
-        ef("当前管理器连接的CCPS数量已达到上限");
-        emit requestInvalid(IP, port);
-        return;
-    }
+    char cf = dataC[0];
+    if ((cf & 0x07) != 0x01)return; // 如果不是连接请求, 直接丢弃
+    if (data.size() < 3)return; // 数据包不完整
+    unsigned short SID = (*(unsigned short *) (dataC + 1)); // 提取SID
+    if (((cf >> 5) & 0x01) || SID != 0)return; // NA位不能为1, SID必须是0
+    if (ccp.size() >= connectNum)return; // 连接上限
     auto tmp = new CCPS(this, IP, port);
     connecting[ipPort] = tmp;
-    connect(tmp, &CCPS::connected_, this, &CCPSManager::connected_);
-    connect(tmp, &CCPS::disconnectedForCM_, this, &CCPSManager::requestInvalid_);
-    emit tmp->procS_(data);
+    connect(tmp, &CCPS::disconnected, this, &CCPSManager::requestInvalid_);
+    tmp->proc_(data);
 }
 
-CCPSManager::~CCPSManager() {
-    close();
-}
+CCPSManager::CCPSManager(QObject *parent) : QObject(parent) {}
 
-QByteArrayList CCPSManager::bind(unsigned short port) {
-    QByteArrayList tmp;
-    auto tmp4 = bind("0.0.0.0", port);
-    if (!tmp4.isEmpty())
-        tmp.append("IPv4: " + tmp4);
-    auto tmp6 = bind("::", port);
-    if (!tmp6.isEmpty())
-        tmp.append("IPv6: " + tmp6);
-    return tmp;
-}
+CCPSManager::~CCPSManager() = default; // 不允许被外部调用
 
-QByteArray CCPSManager::bind(const QByteArray &IP, unsigned short port) {
-    QHostAddress ip(IP);
-    QUdpSocket **udpTmp;
-    char ipProtocol = 0;
-    switch (ip.protocol()) {
-        case QAbstractSocket::IPv4Protocol:
-            udpTmp = &ipv4;
-            ipProtocol = 1;
-            break;
-        case QAbstractSocket::IPv6Protocol:
-            udpTmp = &ipv6;
-            ipProtocol = 2;
-            break;
-        default:
-            break;
-    }
-    if (ipProtocol == 0) return "IP不正确";
-    auto &udp = (*udpTmp);
-    if (udp == nullptr) {
-        udp = new QUdpSocket(this);
-        if (udp->bind(ip, port)) {
-            udpErrorInfo = "";
-            connect(udp, &QUdpSocket::readyRead, this, &CCPSManager::recv_);
-        } else {
-            udpErrorInfo = udp->errorString().toLocal8Bit();
-            delete udp;
-            udp = nullptr;
+void CCPSManager::deleteLater() {QObject::deleteLater();} // 不允许被外部调用
+
+void CCPSManager::close() { // 这个只是关闭管理器
+    THREAD_CHECK();
+    auto rm = [this](QHash<QString, CCPS *> &cs) {
+        for (auto i: cs) {
+            disconnect(i, &CCPS::disconnected, this, &CCPSManager::requestInvalid_);
+            disconnect(i, &CCPS::disconnected, this, &CCPSManager::rmCCPS_);
+            i->close("管理器服务关闭");
+            if (i->cs < 1)i->deleteLater(); // 如果i还处于未连接状态, 自己delete
         }
-    } else
-        udpErrorInfo = "CCPS管理器已绑定";
-    return udpErrorInfo;
-}
-
-void CCPSManager::setMaxConnectNum(unsigned long long cn) {
-    connectNum = cn;
-}
-
-unsigned long long CCPSManager::getConnectNum() {
-    return ccps.size();
-}
-
-void CCPSManager::sendF_(const QHostAddress& IP, unsigned short port, const QByteArray& data) {
-    switch (IP.protocol()) {
-        case QAbstractSocket::IPv4Protocol:
-            if (ipv4 != nullptr)ipv4->writeDatagram(data, IP, port);
-            break;
-        case QAbstractSocket::IPv6Protocol:
-            if (ipv6 != nullptr)ipv6->writeDatagram(data, IP, port);
-            break;
-        default:
-            break;
-    }
-}
-
-void CCPSManager::connectFail_(const QByteArray& data) {
-    CCPS *c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
-    connecting.remove(toIPPort(c->IP, c->port));
-    emit connectFail(c->IP, c->port, data);
-}
-
-void CCPSManager::connected_() {
-    CCPS *c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
-    QByteArray key = toIPPort(c->IP, c->port);
-    connecting.remove(key);
-    if (ccps.size() < connectNum) {
-        connect(c, &CCPS::disconnectedForCM_, this, &CCPSManager::rmCCPS_);
-        ccps[key] = c;
-        emit connected(c);
-    } else {
-        c->close("当前连接的CCPS数量已达到上限");
-        if (c->initiative) {//根据主动性触发不同的失败信号到外层
-            emit connectFail(c->IP, c->port, "当前连接的CCPS数量已达到上限");
-        } else {
-            emit requestInvalid(c->IP, c->port);
-        }
-    }
-}
-
-void CCPSManager::close() {
-    auto callBack = [](CCPS *&i, const char *) {
-        disconnect(i, &CCPS::disconnectedForCM_, nullptr, nullptr);
-        i->close("管理器服务关闭");
+        cs.clear();
     };
-    connecting.traverse(callBack);
-    connecting.clear();
-    ccps.traverse(callBack);
-    ccps.clear();
-    delete ipv4;
+    rm(ccp);
+    rm(connecting);
+    if (ipv4 != nullptr)ipv4->deleteLater();
+    if (ipv6 != nullptr)ipv6->deleteLater();
     ipv4 = nullptr;
-    delete ipv6;
     ipv6 = nullptr;
 }
 
-int CCPSManager::isBind() {
-    int tmp = 0;
-    if (ipv4 != nullptr)
-        tmp |= 1;
-    if (ipv6 != nullptr)
-        tmp |= 2;
+void CCPSManager::quit() { // delete对象调用它
+    THREAD_CHECK();
+    close();
+    deleteLater();
+}
+
+QString CCPSManager::bind(const QString &ipStr, unsigned short port) {
+    THREAD_CHECK({}); // 不允许被别的线程调用
+    if (isBind() != 0 && !isBindAll)return "CCPS管理器已绑定";
+    QHostAddress ip(ipStr); // 构造QHostAddress对象
+    QUdpSocket **udpTmp = nullptr; // 使用哪个udp, 双重指针
+    auto protocol = ip.protocol(); // 获取ip的协议
+    if (protocol == QUdpSocket::IPv4Protocol)udpTmp = &ipv4; // 如果是ipv4, 获取ipv4的udp指针
+    else if (protocol == QUdpSocket::IPv6Protocol)udpTmp = &ipv6; // 如果是ipv6, 获取ipv6的udp指针
+    if (udpTmp == nullptr) return "IP不正确"; // 如果udpTmp为空, 说明IP不正确
+    auto &udp = (*udpTmp); // 获取udpTmp指向的指针对象
+    QString error; // 错误信息
+    if (udp == nullptr) { // 如果udp是空
+        udp = new QUdpSocket(this); // new对象
+        if (udp->bind(ip, port)) // 绑定
+            connect(udp, &QUdpSocket::readyRead, this, &CCPSManager::recv_);
+        else { // 绑定失败
+            error = udp->errorString();
+            delete udp;
+            udp = nullptr;
+        }
+    } else error = "CCPS管理器已绑定"; // 否则CCPS已绑定
+    return error;
+}
+
+QStringList CCPSManager::bind(unsigned short port) { // 同时绑定ipv4和ipv6
+    THREAD_CHECK({}); // 不允许被别的线程调用
+    isBindAll = true;
+    QStringList tmp;
+    auto tmp4 = bind("0.0.0.0", port);
+    if (!tmp4.isEmpty())tmp.append("IPv4: " + tmp4);
+    auto tmp6 = bind("::", port);
+    if (!tmp6.isEmpty())tmp.append("IPv6: " + tmp6);
+    isBindAll = false;
     return tmp;
 }
 
-void CCPSManager::createConnection(const QByteArray &IP, unsigned short port) {
-    QHostAddress ip(IP);
-    {
-        QUdpSocket **udpTmp;
-        char ipProtocol = 0;
-        switch (ip.protocol()) {
-            case QAbstractSocket::IPv4Protocol:
-                udpTmp = &ipv4;
-                ipProtocol = 1;
-                break;
-            case QAbstractSocket::IPv6Protocol:
-                udpTmp = &ipv6;
-                ipProtocol = 2;
-                break;
-            default:
-                break;
-        }
-        if (ipProtocol == 0) {
-            emit connectFail(ip, port, "IP不正确");
-            return;
-        }
-        auto &udp = (*udpTmp);
-        if (udp == nullptr) {
-            emit connectFail(ip, port, "以目标IP协议所管理的CCPS管理器未启动");
-            return;
-        }
-    }
-    auto ipTmp = toIPPort(QHostAddress(IP), port);
-    if (ccps.exist(ipTmp)) {
-        emit connected(ccps[ipTmp]);
+void CCPSManager::connectToHost(const QString &ipStr, unsigned short port) {
+    THREAD_CHECK();
+    connectToHost(QHostAddress(ipStr), port);
+}
+
+void CCPSManager::connectToHost(const QHostAddress &ip, unsigned short port) {
+    THREAD_CHECK(); // 检查线程
+    QUdpSocket *udp = nullptr;
+    auto protocol = ip.protocol();
+    if (protocol == QUdpSocket::IPv4Protocol)udp = ipv4;
+    else if (protocol == QUdpSocket::IPv6Protocol)udp = ipv6;
+    if (udp == nullptr) { // IP协议检查失败
+        emit connectFail(ip, port, "以目标IP协议所管理的CCPS管理器未绑定");
         return;
     }
-    if ((ccps.size() >= connectNum)) {
+    if ((ccp.size() >= connectNum)) {
         emit connectFail(ip, port, "当前管理器连接的CCPS数量已达到上限");
         return;
     }
-    if (!connecting.exist(ipTmp)) {
-        auto tmp = new CCPS(this, QHostAddress(IP), port);
-        connecting[ipTmp] = tmp;
-        connect(tmp, &CCPS::connected_, this, &CCPSManager::connected_);
-        connect(tmp, &CCPS::disconnectedForCM_, this, &CCPSManager::connectFail_);
-        tmp->connect_();
+    auto ipPort = IPPort(ip, port);
+    if (ccp.contains(ipPort)) {
+        emit connected(ccp[ipPort]);
+        return;
+    }
+    if (!connecting.contains(ipPort)) {
+        auto tmp = new CCPS(this, ip, port);
+        connecting[ipPort] = tmp;
+        connect(tmp, &CCPS::disconnected, this, &CCPSManager::requestInvalid_);
+        tmp->connectToHost_();
     }
 }
 
-QByteArray CCPSManager::udpError() const {
-    return udpErrorInfo;
-}
-
-void CCPSManager::rmCCPS_() {
-    auto c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
-    auto ipPort = toIPPort(c->IP, c->port);
-    ccps.remove(ipPort);
-}
-
-void CCPSManager::requestInvalid_(const QByteArray&) {
-    auto c = (CCPS *) sender();
-    disconnect(c, &CCPS::disconnectedForCM_, nullptr, nullptr);
-    connecting.remove(toIPPort(c->IP, c->port));
-    emit requestInvalid(c->IP, c->port);
-}
-
-void CCPSManager::recv_() {
-    auto udp = (QUdpSocket*)sender();
+void CCPSManager::recv_() { // 来源于udpSocket信号调用, 不会被别的线程调用, 是私有函数
+    auto udp = (QUdpSocket *) sender();
     while (udp->hasPendingDatagrams()) {
         auto datagrams = udp->receiveDatagram();
         auto IP = datagrams.senderAddress();
         auto port = datagrams.senderPort();
         auto data = datagrams.data();
-        if (data.size() >= 45) proc_(IP, port, data);
+        if (!data.isEmpty()) {
+            proc_(IP, port, data);
+            emit cLog("↓ " + IPPort(IP, port) + " : " + BAToHex(data));
+        }
     }
+}
+
+void CCPSManager::setMaxConnectNum(int num) {
+    THREAD_CHECK(); // 不允许被别的线程调用
+    if (num > 0)connectNum = num;
+}
+
+int CCPSManager::getMaxConnectNum() {
+    THREAD_CHECK(-1); // 不允许被别的线程调用
+    return connectNum;
+}
+
+int CCPSManager::getConnectedNum() {
+    THREAD_CHECK(-1); // 不允许被别的线程调用
+    return (int) ccp.size();
+}
+
+int CCPSManager::isBind() { // 已经绑定, 1表示只绑定了IPv4, 2表示只绑定了IPv6, 3表示IPv4和IPv6都绑定了
+    THREAD_CHECK(-1); // 不允许被别的线程调用
+    int tmp = 0;
+    if (ipv4 != nullptr)tmp |= 1;
+    if (ipv6 != nullptr)tmp |= 2;
+    return tmp;
+}
+
+void CCPSManager::send_(const QHostAddress &IP, unsigned short port, const QByteArray &data) {
+    QUdpSocket *udp = nullptr;
+    auto protocol = IP.protocol();
+    if (protocol == QUdpSocket::IPv4Protocol)udp = ipv4;
+    else if (protocol == QUdpSocket::IPv6Protocol)udp = ipv6;
+    if (udp == nullptr)return;
+    udp->writeDatagram(data, IP, port);
+    emit cLog("↑ " + IPPort(IP, port) + " : " + BAToHex(data));
+}
+
+bool CCPSManager::threadCheck_(const QString &funcName) {
+    if (QThread::currentThread() == thread())return true;
+    qWarning()
+            << "函数" << funcName << "不允许在其他线程调用, 操作被拒绝.\n"
+            << "对象:" << this << ", 调用线程:" << QThread::currentThread() << ", 对象所在线程:" << thread();
+    return false;
+}
+
+void CCPSManager::ccpConnected_(CCPS *c) { // 当CCPS处理后连接成功调用这个函数
+    auto key = IPPort(c->IP, c->port);
+    connecting.remove(key);
+    if (ccp.size() < connectNum) {
+        disconnect(c, &CCPS::disconnected, this, &CCPSManager::requestInvalid_); // 断开连接
+        connect(c, &CCPS::disconnected, this, &CCPSManager::rmCCPS_);
+        ccp[key] = c;
+        emit connected(c);
+    } else {
+        c->close("当前连接的CCPS数量已达到上限");
+        c->deleteLater();
+        if (c->initiative)emit connectFail(c->IP, c->port, "当前连接的CCPS数量已达到上限");
+    }
+}
+
+void CCPSManager::requestInvalid_(const QByteArray &data) {
+    auto c = (CCPS *) sender();
+    c->deleteLater();
+    connecting.remove(IPPort(c->IP, c->port));
+    if (c->initiative)emit connectFail(c->IP, c->port, data); // 如果是主动连接的触发连接失败
+}
+
+void CCPSManager::rmCCPS_() {
+    auto c = (CCPS *) sender();
+    ccp.remove(IPPort(c->IP, c->port));
 }
