@@ -20,7 +20,7 @@
 #define X25519_LEN 32
 #define IV_LEN 16
 
-KEY_DLL int genX25519KeyPair(unsigned char *priKey, unsigned char *pubKey);
+KEY_DLL int genKeyPair(unsigned char *priKey, unsigned char *pubKey);
 KEY_DLL int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey);
 KEY_DLL int encryptData(char *msg, int msgSize, unsigned char *key, unsigned char *IV, char *cipher);
 KEY_DLL int decryptData(char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, char *msg);

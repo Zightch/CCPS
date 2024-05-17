@@ -1,11 +1,15 @@
 # Key库
+头文件[`jni/key.h`](jni/key.h)  
+源文件[`jni/key.c`](jni/key.c)  
 集成了如下功能
 
 | 函数名 | 功能 |
 | :-: |:-:|
-| genX25519KeyPair | 生成X25519密钥对  |
+| genKeyPair | 生成密钥对  |
 | genSharedKey | 用自己私钥与公钥生成共享密钥 |
 | encryptData | 用密钥与IV数组加密消息 |
 | decryptData | 用密钥与IV数组解密消息 |
 
-其中加密与解密算法使用AES-256-GCM
+* 生成密钥对与计算公钥使用X25519算法
+* 其中加密与解密算法使用AES-256-GCM
+* 构建安卓平台时请确保OpenSSL库与Key库的Android api为22

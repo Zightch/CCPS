@@ -2,7 +2,7 @@
 #include "key.h"
 #include <openssl/evp.h>
 
-int genX25519KeyPair(unsigned char *priKey, unsigned char *pubKey) {
+int genKeyPair(unsigned char *priKey, unsigned char *pubKey) {
     EVP_PKEY *pkey = NULL;
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, NULL);
     if (!pctx) return 0;
