@@ -75,7 +75,7 @@ int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sh
     EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(thisKey);
     EVP_PKEY_free(peerKey);
-    return 0;
+    return 1;
 }
 
 int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher) {
@@ -117,7 +117,7 @@ int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned ch
     // 追加tag
     if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, IV_LEN, cipher + cipherLen) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
-        return -5;
+        return -6;
     }
     cipherLen += IV_LEN;
 
