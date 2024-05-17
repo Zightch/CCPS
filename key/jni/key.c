@@ -78,7 +78,7 @@ int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sh
     return 0;
 }
 
-int encryptData(char *msg, int msgSize, unsigned char *key, unsigned char *IV, char *cipher) {
+int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -101,14 +101,14 @@ int encryptData(char *msg, int msgSize, unsigned char *key, unsigned char *IV, c
 
     // 加密消息
     int len = msgSize + IV_LEN;
-    if (EVP_EncryptUpdate(ctx, (unsigned char *) cipher, &len, (unsigned char *) msg, msgSize) <= 0) {
+    if (EVP_EncryptUpdate(ctx, cipher, &len, msg, msgSize) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return -4;
     }
     int cipherLen = len;
 
     // 完成加密
-    if (EVP_EncryptFinal_ex(ctx, (unsigned char *) (cipher + len), &len) <= 0) {
+    if (EVP_EncryptFinal_ex(ctx, cipher + len, &len) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return -5;
     }
@@ -125,7 +125,7 @@ int encryptData(char *msg, int msgSize, unsigned char *key, unsigned char *IV, c
     return cipherLen;
 }
 
-int decryptData(char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, char *msg) {
+int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -148,7 +148,7 @@ int decryptData(char *cipher, int cipherSize, unsigned char *key, unsigned char 
 
     // 解密数据
     int len = cipherSize - IV_LEN;
-    if (EVP_DecryptUpdate(ctx, (unsigned char *) msg, &len, (unsigned char *) cipher, cipherSize) <= 0) {
+    if (EVP_DecryptUpdate(ctx, msg, &len, cipher, cipherSize) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return -4;
     }
@@ -161,7 +161,7 @@ int decryptData(char *cipher, int cipherSize, unsigned char *key, unsigned char 
     }
 
     // 完成解密
-    if (EVP_DecryptFinal_ex(ctx, (unsigned char *) (msg + len), &len) <= 0) {
+    if (EVP_DecryptFinal_ex(ctx, msg + len, &len) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return -6;
     }
