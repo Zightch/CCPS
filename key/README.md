@@ -4,9 +4,9 @@
 集成了如下功能
 
 | 函数名 | 功能 |
-| :-: |:-:|
-| genKeyPair | 生成密钥对  |
-| genSharedKey | 用自己私钥与公钥生成共享密钥 |
+| :-: | :-: |
+| genKeyPair | 生成密钥对 |
+| genSharedKey | 用自己私钥与对端公钥生成共享密钥 |
 | encryptData | 用密钥与IV数组加密消息 |
 | decryptData | 用密钥与IV数组解密消息 |
 
