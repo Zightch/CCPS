@@ -8,7 +8,7 @@ QString IPPort(const QHostAddress &addr, unsigned short port) {
     auto protocol = addr.protocol();
     if (protocol == QAbstractSocket::IPv4Protocol)return ip + ":" + portStr;
     else if (protocol == QAbstractSocket::IPv6Protocol)return "[" + ip + "]:" + portStr;
-    else return "";
+    else return {};
 }
 
 QString BAToHex(const QByteArray &data) {

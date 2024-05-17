@@ -16,7 +16,7 @@ public:
 
     unsigned short getPort();
 
-    void close(const QByteArray & = "");
+    void close(const QByteArray & = {});
 
     void send(const QByteArray &);
 
@@ -31,7 +31,7 @@ public slots:
 
 signals:
 
-    void disconnected(const QByteArray & = "");
+    void disconnected(const QByteArray & = {});
 
     void readyRead();
 
@@ -44,7 +44,7 @@ private:
     public:
         unsigned char cf = 0;//属性和命令
         unsigned short SID = 0;//本包ID
-        QByteArray data = "";//用户数据
+        QByteArray data{};//用户数据
     };
 
     CCPSManager *cm = nullptr; // CCPSManager
