@@ -52,9 +52,9 @@ add_library(
 )
 
 if(WIN32)
-    set(key-link E:/OpenSSL/lib64/libcrypto.a ws2_32 crypt32)
+    set(key-link ${OPENSSL_INCLUDE_DIR}/../lib64/libcrypto.a ws2_32 crypt32)
 elseif(UNIX)
-    set(key-link E:/OpenSSL/lib64/libcrypto.a)
+    set(key-link ${OPENSSL_INCLUDE_DIR}/../lib64/libcrypto.a)
 else()
     message(FATAL_ERROR 未知平台)
 endif()
