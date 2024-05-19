@@ -170,3 +170,29 @@ int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsig
     EVP_CIPHER_CTX_free(ctx);
     return msgLen;
 }
+
+int verify(unsigned char *pubKey, unsigned char *message, long long msgSize, unsigned char *sign, long long sigSize) {
+    // 创建公钥
+    EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pubKey, X25519_LEN);
+    if (!pkey)return 0;
+
+    // 创建上下文
+    EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
+    if (!md_ctx) {
+        EVP_PKEY_free(pkey);
+        return -1;
+    }
+
+    // 初始化上下文
+    if (EVP_DigestVerifyInit(md_ctx, NULL, NULL, NULL, pkey) <= 0) {
+        EVP_PKEY_free(pkey);
+        EVP_MD_CTX_free(md_ctx);
+        return -2;
+    }
+
+    // 消息验签
+    int result = EVP_DigestVerify(md_ctx, sign, sigSize, message, msgSize);
+    EVP_PKEY_free(pkey);
+    EVP_MD_CTX_free(md_ctx);
+    return result;
+}
