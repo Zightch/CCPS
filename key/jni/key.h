@@ -17,7 +17,7 @@
 #define KEY_DLL C_IDENTIFY
 #endif
 
-#define X25519_LEN 32
+#define LEN_25519 32
 #define IV_LEN 16
 
 KEY_DLL int genKeyPair(unsigned char *priKey, unsigned char *pubKey);

@@ -15,7 +15,7 @@ int genKeyPair(unsigned char *priKey, unsigned char *pubKey) {
         return -2;
     }
     EVP_PKEY_CTX_free(pctx);
-    size_t size = X25519_LEN;
+    size_t size = LEN_25519;
     if (EVP_PKEY_get_raw_public_key(pkey, pubKey, &size) <= 0) {
         EVP_PKEY_free(pkey);
         return -3;
@@ -30,10 +30,10 @@ int genKeyPair(unsigned char *priKey, unsigned char *pubKey) {
 
 int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey) {
     // 创建私钥
-    EVP_PKEY *thisKey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, X25519_LEN);
+    EVP_PKEY *thisKey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, LEN_25519);
     if (!thisKey)return 0;
     // 创建公钥
-    EVP_PKEY *peerKey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, pubKey, X25519_LEN);
+    EVP_PKEY *peerKey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, pubKey, LEN_25519);
     if (!peerKey) {
         EVP_PKEY_free(thisKey);
         return -1;
@@ -64,7 +64,7 @@ int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sh
     }
 
     // 生成共享密钥
-    size_t size = X25519_LEN;
+    size_t size = LEN_25519;
     if (EVP_PKEY_derive(pctx, sharedKey, &size) <= 0) {
         EVP_PKEY_CTX_free(pctx);
         EVP_PKEY_free(thisKey);
@@ -173,7 +173,7 @@ int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsig
 
 int verify(unsigned char *pubKey, unsigned char *message, long long msgSize, unsigned char *sign, long long sigSize) {
     // 创建公钥
-    EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pubKey, X25519_LEN);
+    EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pubKey, LEN_25519);
     if (!pkey)return 0;
 
     // 创建上下文
