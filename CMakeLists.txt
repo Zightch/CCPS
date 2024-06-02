@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-set(projectName CCPS)
+set(projectName CCPSTest)
 project(${projectName} LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -14,12 +14,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(./include)
 include_directories(./${projectName})
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Network REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Network REQUIRED)
+link_directories(libs)
 
-add_library(
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Widgets Network REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network REQUIRED)
+
+add_executable(
         ${projectName}
-        SHARED
+        main.cpp
+
+        CCPSTest/CCPSTest.ui
+        CCPSTest/CCPSTest.cpp
+
+        NewConnect/NewConnect.cpp
+        NewConnect/NewConnect.ui
+
+        ShowMsg/ShowMsg.ui
+        ShowMsg/ShowMsg.cpp
+
         CCPS/CCPS.cpp
         CCPS/CCPSManager.cpp
         tools/tools.cpp
@@ -27,7 +39,7 @@ add_library(
 
 target_link_libraries(
         ${projectName}
-        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
         key
 )

@@ -7,7 +7,7 @@
 class CCPSManager;
 class CDPT;
 
-//CCP协议对象类(实现)
+//CCPS协议对象类(实现)
 class CCPS final : public QObject {
 Q_OBJECT
 
@@ -40,7 +40,7 @@ private slots:
     void sendTimeout_();
 
 private:
-    class CCPDP {//纯数据
+    class CCPSDP {//纯数据
     public:
         unsigned char cf = 0;//属性和命令
         unsigned short SID = 0;//本包ID
@@ -53,7 +53,7 @@ private:
     unsigned short OID = -1; // 对方当前包ID
 
     QHash<unsigned short, CDPT *> sendWnd; // 发送窗口
-    QHash<unsigned short, CCPDP> recvWnd; // 接收窗口
+    QHash<unsigned short, CCPSDP> recvWnd; // 接收窗口
     QList<CDPT *> sendBufLv1; // 发送1级缓存
     QByteArrayList readBuf; // 可读缓存
     QByteArrayList sendBufLv2; // 发送2级缓存
@@ -97,8 +97,8 @@ private:
     friend class CDPT;
 };
 
-//CCP数据包+定时器(定义)
-class CDPT : public QTimer, public CCPS::CCPDP {
+//CCPS数据包+定时器(定义)
+class CDPT : public QTimer, public CCPS::CCPSDP {
 Q_OBJECT
 
 private:

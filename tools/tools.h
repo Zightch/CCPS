@@ -6,6 +6,8 @@ class QByteArray;
 
 QString IPPort(const QHostAddress &, unsigned short);
 
-QString BAToHex(const QByteArray &);
+QString bytesToHexString(const QByteArray &);
+
+QByteArray hexStringToBytes(const QString &);
 
 QByteArray dump(unsigned short);

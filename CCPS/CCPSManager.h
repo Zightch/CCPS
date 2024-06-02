@@ -50,9 +50,9 @@ private slots:
 
     void rmCCPS_();
 private:
-    QHash<QString, CCPS *> ccp; // 已连接的
+    QHash<QString, CCPS *> ccps; // 已连接的
     int connectNum = 65535; // 最大连接数量
-    QHash<QString, CCPS *> connecting; // 连接中的ccp
+    QHash<QString, CCPS *> connecting; // 连接中的ccps
     QUdpSocket *ipv4 = nullptr;
     QUdpSocket *ipv6 = nullptr;
     bool isBindAll = false; // 判断是否是调用的QStringList bind(unsigned short);函数
@@ -65,9 +65,9 @@ private:
 
     bool threadCheck_(const QString &); // 线程检查
 
-    void ccpConnected_(CCPS *);
+    void ccpsConnected_(CCPS *);
 
     void requestInvalid_(const QByteArray &);
 
-    friend class CCP;
+    friend class CCPS;
 };

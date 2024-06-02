@@ -9,7 +9,7 @@
 CCPS::CCPS(CCPSManager *parent, const QHostAddress &IP, unsigned short p) : QObject(parent), IP(IP), port(p), cm(parent) {
     connect(&hbt, &QTimer::timeout, this, [&]() {
         if (cs == 1) {
-            auto *cdpt = new CDPT(this);
+            auto *cdpt = newCDPT();
             cdpt->cf = 0x05;
             cdpt->SID = ID + sendWnd.size() + sendBufLv1.size();
             sendBufLv1.append(cdpt);
@@ -63,11 +63,12 @@ void CCPS::proc_(const QByteArray &data) { // 该函数只能被CCPSManager调�
         } else if (cmd == 2) { // ACK指令, 应答
             if (NA) {
                 unsigned short AID = (*(unsigned short *) (data_c + 1));
-                if (sendWnd.count(AID) == 1) {
+                if (sendWnd.contains(AID)) {
                     sendWnd[AID]->stop();
                     if (AID == 0 && cs == 0) {
                         cs = 1;
-                        cm->ccpConnected_(this);
+                        cm->ccpsConnected_(this);
+                        hbt.start(hbtTime);
                     }
                 }
             }
@@ -82,7 +83,7 @@ void CCPS::proc_(const QByteArray &data) { // 该函数只能被CCPSManager调�
                     cs = 1;
                     delete sendWnd[0];
                     sendWnd.remove(0);
-                    cm->ccpConnected_(this);
+                    cm->ccpsConnected_(this);
                     hbt.start(hbtTime);
                 }
             } else if (RT)NA_ACK(0);
