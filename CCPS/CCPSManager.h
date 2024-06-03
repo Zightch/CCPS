@@ -29,13 +29,13 @@ public:
 
     void connectToHost(const QHostAddress &, unsigned short);
 
-    bool setServerCrtAndKey(const QByteArray &, const QByteArray &); // 设置服务器证书和密钥
+    QString setServerCrtAndKey(const QByteArray &, const QByteArray &); // 设置服务器证书和密钥
 
-    bool setVerifyClientCrt(const QByteArray &); // 设置验证客户端的证书(如果设置表示验证客户端)
+    QString setVerifyClientCrt(const QByteArray &); // 设置验证客户端的证书(如果设置表示验证客户端)
 
-    bool setClientCrtAndKey(const QByteArray &, const QByteArray &); // 设置客户端的证书和密钥
+    QString setClientCrtAndKey(const QByteArray &, const QByteArray &); // 设置客户端的证书和密钥
 
-    bool setVerifyServerCrt(const QByteArray &); // 设置验证服务端的证书(如果设置表示验证服务端)
+    QString setVerifyServerCrt(const QByteArray &); // 设置验证服务端的证书(如果设置表示验证服务端)
 
 signals:
 

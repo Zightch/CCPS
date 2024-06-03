@@ -3,6 +3,7 @@
 #include <QDialog>
 
 class CCPSManager;
+class QLineEdit;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class SetCert; }
@@ -19,15 +20,18 @@ public:
 private:
     Ui::SetCert *ui;
     CCPSManager *cm = nullptr;
-    QString lastServerCrtPath;
-    QString lastServerKeyPath;
-    QString lastVerifyClientCrtPath;
-    QString lastClientCrtPath;
-    QString lastClientKeyPath;
-    QString lastVerifyServerCrtPath;
+    QLineEdit *lineEdits[6] = {nullptr};
+    QPushButton *btns[6] = {nullptr};
+
+    QString lastPaths[6];
+
     void closeEvent(QCloseEvent *e) override;
+
 private slots:
+
     void select();
+
     void OK();
+
     void cancel();
 };

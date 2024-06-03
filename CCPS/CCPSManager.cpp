@@ -210,22 +210,22 @@ void CCPSManager::rmCCPS_() {
     ccps.remove(IPPort(c->IP, c->port));
 }
 
-bool CCPSManager::setServerCrtAndKey(const QByteArray &crt, const QByteArray &key) {
-    THREAD_CHECK(false); // 不允许被别的线程调用
-    return false;
+QString CCPSManager::setServerCrtAndKey(const QByteArray &crt, const QByteArray &key) {
+    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    return {};
 }
 
-bool CCPSManager::setVerifyClientCrt(const QByteArray &crt) {
-    THREAD_CHECK(false); // 不允许被别的线程调用
-    return false;
+QString CCPSManager::setVerifyClientCrt(const QByteArray &crt) {
+    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    return {};
 }
 
-bool CCPSManager::setClientCrtAndKey(const QByteArray &crt, const QByteArray &key) {
-    THREAD_CHECK(false); // 不允许被别的线程调用
-    return false;
+QString CCPSManager::setClientCrtAndKey(const QByteArray &crt, const QByteArray &key) {
+    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    return {};
 }
 
-bool CCPSManager::setVerifyServerCrt(const QByteArray &crt) {
-    THREAD_CHECK(false); // 不允许被别的线程调用
-    return false;
+QString CCPSManager::setVerifyServerCrt(const QByteArray &crt) {
+    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    return {};
 }
