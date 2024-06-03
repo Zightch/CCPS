@@ -1,6 +1,8 @@
 #define EXPORT
 #include "key.h"
 #include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 
 int GenKeyPair(unsigned char *priKey, unsigned char *pubKey) {
     EVP_PKEY *pkey = NULL;
@@ -28,7 +30,7 @@ int GenKeyPair(unsigned char *priKey, unsigned char *pubKey) {
     return 1;
 }
 
-int GetPubKey(unsigned char *priKey, unsigned char *pubKey) {
+int GetPubKey(const unsigned char *priKey, unsigned char *pubKey) {
     // 创建私钥
     EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, LEN_25519);
     if (!pkey) return 0;
@@ -44,7 +46,7 @@ int GetPubKey(unsigned char *priKey, unsigned char *pubKey) {
     return 1;
 }
 
-int GenSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey) {
+int GenSharedKey(const unsigned char *priKey, const unsigned char *pubKey, unsigned char *sharedKey) {
     // 创建私钥
     EVP_PKEY *thisKey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, LEN_25519);
     if (!thisKey)return 0;
@@ -94,7 +96,7 @@ int GenSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sh
     return 1;
 }
 
-int EncryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher) {
+int EncryptData(const unsigned char *msg, int msgSize, const unsigned char *key, const unsigned char *IV, unsigned char *cipher) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -141,7 +143,7 @@ int EncryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned ch
     return cipherLen;
 }
 
-int DecryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg) {
+int DecryptData(const unsigned char *cipher, int cipherSize, const unsigned char *key, const unsigned char *IV, unsigned char *msg) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -171,7 +173,7 @@ int DecryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsig
     int msgLen = len;
 
     // 设置tag
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, IV_LEN, cipher + cipherSize - IV_LEN) <= 0) {
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, IV_LEN, (void *) (cipher + cipherSize - IV_LEN)) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         return -5;
     }
@@ -187,7 +189,7 @@ int DecryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsig
     return msgLen;
 }
 
-int Verify(unsigned char *pubKey, unsigned char *msg, long long msgSize, unsigned char *sign, long long signSize) {
+int Verify(const unsigned char *pubKey, const unsigned char *msg, int msgSize, const unsigned char *sign, int signSize) {
     // 创建公钥
     EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pubKey, LEN_25519);
     if (!pkey)return 0;
@@ -211,4 +213,13 @@ int Verify(unsigned char *pubKey, unsigned char *msg, long long msgSize, unsigne
     EVP_PKEY_free(pkey);
     EVP_MD_CTX_free(md_ctx);
     return result;
+}
+
+void Rand(unsigned char *data, int size) {
+    RAND_bytes(data, size);
+}
+
+int Sha512(const unsigned char *msg, int msgSize, unsigned char *sha512) {
+    if (SHA512(msg, msgSize, sha512) == NULL)return 0;
+    return 1;
 }
