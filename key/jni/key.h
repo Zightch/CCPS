@@ -20,10 +20,11 @@
 #define LEN_25519 32
 #define IV_LEN 16
 
-KEY_DLL int genKeyPair(unsigned char *priKey, unsigned char *pubKey);
-KEY_DLL int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey);
-KEY_DLL int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher);
-KEY_DLL int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg);
-KEY_DLL int verify(unsigned char *pubKey, unsigned char *message, long long msgSize, unsigned char *sign, long long sigSize);
+KEY_DLL int GenKeyPair(unsigned char *priKey, unsigned char *pubKey);
+KEY_DLL int GetPubKey(unsigned char *priKey, unsigned char *pubKey);
+KEY_DLL int GenSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey);
+KEY_DLL int EncryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher);
+KEY_DLL int DecryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg);
+KEY_DLL int Verify(unsigned char *pubKey, unsigned char *msg, long long msgSize, unsigned char *sign, long long signSize);
 
 #endif

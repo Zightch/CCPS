@@ -2,7 +2,7 @@
 #include "key.h"
 #include <openssl/evp.h>
 
-int genKeyPair(unsigned char *priKey, unsigned char *pubKey) {
+int GenKeyPair(unsigned char *priKey, unsigned char *pubKey) {
     EVP_PKEY *pkey = NULL;
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, NULL);
     if (!pctx) return 0;
@@ -28,7 +28,23 @@ int genKeyPair(unsigned char *priKey, unsigned char *pubKey) {
     return 1;
 }
 
-int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey) {
+int GetPubKey(unsigned char *priKey, unsigned char *pubKey) {
+    // 创建私钥
+    EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, LEN_25519);
+    if (!pkey) return 0;
+
+    // 获取公钥
+    size_t pubKeyLen = LEN_25519;
+    if (EVP_PKEY_get_raw_public_key(pkey, pubKey, &pubKeyLen) <= 0) {
+        EVP_PKEY_free(pkey);
+        return -1;
+    }
+
+    EVP_PKEY_free(pkey);
+    return 1;
+}
+
+int GenSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sharedKey) {
     // 创建私钥
     EVP_PKEY *thisKey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, priKey, LEN_25519);
     if (!thisKey)return 0;
@@ -78,7 +94,7 @@ int genSharedKey(unsigned char *priKey, unsigned char *pubKey, unsigned char *sh
     return 1;
 }
 
-int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher) {
+int EncryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned char *IV, unsigned char *cipher) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -125,7 +141,7 @@ int encryptData(unsigned char *msg, int msgSize, unsigned char *key, unsigned ch
     return cipherLen;
 }
 
-int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg) {
+int DecryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsigned char *IV, unsigned char *msg) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)return 0;
     // 初始化上下文
@@ -171,7 +187,7 @@ int decryptData(unsigned char *cipher, int cipherSize, unsigned char *key, unsig
     return msgLen;
 }
 
-int verify(unsigned char *pubKey, unsigned char *message, long long msgSize, unsigned char *sign, long long sigSize) {
+int Verify(unsigned char *pubKey, unsigned char *msg, long long msgSize, unsigned char *sign, long long signSize) {
     // 创建公钥
     EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL, pubKey, LEN_25519);
     if (!pkey)return 0;
@@ -191,7 +207,7 @@ int verify(unsigned char *pubKey, unsigned char *message, long long msgSize, uns
     }
 
     // 消息验签
-    int result = EVP_DigestVerify(md_ctx, sign, sigSize, message, msgSize);
+    int result = EVP_DigestVerify(md_ctx, sign, signSize, msg, msgSize);
     EVP_PKEY_free(pkey);
     EVP_MD_CTX_free(md_ctx);
     return result;

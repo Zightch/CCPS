@@ -5,11 +5,12 @@
 
 | 函数名 | 功能 |
 | :-: | :-: |
-| genKeyPair | 生成密钥对 |
-| genSharedKey | 用自己私钥与对端公钥生成共享密钥 |
-| encryptData | 用密钥与IV数组加密消息 |
-| decryptData | 用密钥与IV数组解密消息 |
-| verify | 用公钥验对消息验签 |
+| GenKeyPair | 随机生成密钥对 |
+| GetPubKey | 根据私钥生成公钥 |
+| GenSharedKey | 用自己私钥与对端公钥生成共享密钥 |
+| EncryptData | 用密钥与IV数组加密消息 |
+| DecryptData | 用密钥与IV数组解密消息 |
+| Verify | 用公钥验对消息验签 |
 
 * 生成密钥对与计算公钥使用X25519算法
 * 其中加密与解密算法使用AES-256-GCM
