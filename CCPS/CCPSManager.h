@@ -29,6 +29,14 @@ public:
 
     void connectToHost(const QHostAddress &, unsigned short);
 
+    bool setServerCrtAndKey(const QByteArray &, const QByteArray &); // 设置服务器证书和密钥
+
+    bool setVerifyClientCrt(const QByteArray &); // 设置验证客户端的证书(如果设置表示验证客户端)
+
+    bool setClientCrtAndKey(const QByteArray &, const QByteArray &); // 设置客户端的证书和密钥
+
+    bool setVerifyServerCrt(const QByteArray &); // 设置验证服务端的证书(如果设置表示验证服务端)
+
 signals:
 
     void connectFail(const QHostAddress &, unsigned short, const QByteArray &); // 我方主动连接连接失败
@@ -49,6 +57,7 @@ private slots:
     void recv_(); // 接收数据
 
     void rmCCPS_();
+
 private:
     QHash<QString, CCPS *> ccps; // 已连接的
     int connectNum = 65535; // 最大连接数量

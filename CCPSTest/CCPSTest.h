@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QWidget>
-#include "CCPS/CCPSManager.h"
+#include <QHostAddress>
 #include "ShowMsg/ShowMsg.h"
 #include "NewConnect/NewConnect.h"
+#include "SetCert/SetCert.h"
+
+class CCPSManager;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class CCPSTest; }
@@ -18,9 +21,10 @@ public:
     ~CCPSTest() override;
 
 private:
-    Ui::CCPSTest *ui{};
-    CCPSManager *ccpsManager = nullptr;
-    NewConnect *newConnect = nullptr;
+    Ui::CCPSTest *ui = nullptr;
+    CCPSManager *cm = nullptr;
+    NewConnect newConnect;
+    SetCert *setCert = nullptr;
 
     void bind();
 

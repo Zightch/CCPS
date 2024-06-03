@@ -209,3 +209,23 @@ void CCPSManager::rmCCPS_() {
     auto c = (CCPS *) sender();
     ccps.remove(IPPort(c->IP, c->port));
 }
+
+bool CCPSManager::setServerCrtAndKey(const QByteArray &crt, const QByteArray &key) {
+    THREAD_CHECK(false); // 不允许被别的线程调用
+    return false;
+}
+
+bool CCPSManager::setVerifyClientCrt(const QByteArray &crt) {
+    THREAD_CHECK(false); // 不允许被别的线程调用
+    return false;
+}
+
+bool CCPSManager::setClientCrtAndKey(const QByteArray &crt, const QByteArray &key) {
+    THREAD_CHECK(false); // 不允许被别的线程调用
+    return false;
+}
+
+bool CCPSManager::setVerifyServerCrt(const QByteArray &crt) {
+    THREAD_CHECK(false); // 不允许被别的线程调用
+    return false;
+}

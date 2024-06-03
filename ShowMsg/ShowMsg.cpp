@@ -2,6 +2,7 @@
 #include "ui_ShowMsg.h"
 #include "tools/tools.h"
 #include <QRegularExpression>
+#include "CCPS/CCPS.h"
 
 ShowMsg::ShowMsg(CCPS *ccps, QWidget *parent) : QWidget(parent), ui(new Ui::ShowMsg) {
     ui->setupUi(this);

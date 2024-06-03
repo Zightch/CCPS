@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QThread>
 #include "tools/tools.h"
+#include "key.h"
 
 #define THREAD_CHECK(ret) if (!threadCheck_(__FUNCTION__))return ret
 

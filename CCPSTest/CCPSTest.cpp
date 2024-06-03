@@ -2,16 +2,20 @@
 #include "./ui_CCPSTest.h"
 #include <QMessageBox>
 #include "tools/tools.h"
+#include "CCPS/CCPSManager.h"
+#include "CCPS/CCPS.h"
 
 CCPSTest::CCPSTest(QWidget *parent) : QWidget(parent), ui(new Ui::CCPSTest) {
     ui->setupUi(this);
-    newConnect = new NewConnect();
+    cm = new CCPSManager(this);
+    setCert = new SetCert(cm);
     connect(ui->bind, &QPushButton::clicked, this, &CCPSTest::bind);
     connect(ui->connectList, &QListWidget::itemSelectionChanged, this, &CCPSTest::enableOperateBtn);
     connect(ui->showMsg, &QPushButton::clicked, this, &CCPSTest::showMsg);
     connect(ui->closeConnect, &QPushButton::clicked, this, &CCPSTest::closeConnect);
-    connect(ui->newConnect, &QPushButton::clicked, newConnect, &NewConnect::show);
-    connect(newConnect, &NewConnect::toConnect, this, &CCPSTest::toConnect);
+    connect(ui->newConnect, &QPushButton::clicked, &newConnect, &NewConnect::show);
+    connect(ui->crtBtn, &QPushButton::clicked, setCert, &SetCert::exec);
+    connect(&newConnect, &NewConnect::toConnect, this, &CCPSTest::toConnect);
 }
 
 CCPSTest::~CCPSTest() {
@@ -22,34 +26,32 @@ void CCPSTest::bind() {
     auto uiCTRL = [this](bool i) {
         ui->localIP->setEnabled(!i);
         ui->localPort->setEnabled(!i);
+        ui->crtBtn->setEnabled(!i);
         ui->connectList->setEnabled(i);
         ui->newConnect->setEnabled(i);
     };
-    if (ccpsManager == nullptr) {
-        ccpsManager = new CCPSManager(this);
+    if (cm->isBind() == 0) {
         QStringList error;
         auto ipStr = ui->localIP->text().toLocal8Bit();
-        if (ipStr.isEmpty())error = ccpsManager->bind(ui->localPort->value());
+        if (ipStr.isEmpty())error = cm->bind(ui->localPort->value());
         else {
-            auto ret = ccpsManager->bind(ipStr, ui->localPort->value());
+            auto ret = cm->bind(ipStr, ui->localPort->value());
             if (!ret.isEmpty())error.append(ret);
         }
         if (error.isEmpty()) {
             ui->bind->setText("关闭");
             uiCTRL(true);
-            connect(ccpsManager, &CCPSManager::connected, this, &CCPSTest::connected);
-            connect(ccpsManager, &CCPSManager::connectFail, this, &CCPSTest::connectFail);
-            connect(ccpsManager, &CCPSManager::cLog, this, &CCPSTest::appendLog);
+            connect(cm, &CCPSManager::connected, this, &CCPSTest::connected);
+            connect(cm, &CCPSManager::connectFail, this, &CCPSTest::connectFail);
+            connect(cm, &CCPSManager::cLog, this, &CCPSTest::appendLog);
         } else {
             QString tmp;
             for (const auto &i: error)tmp += (i + "\n");
             QMessageBox::information(this, "绑定失败", tmp.trimmed());
-            ccpsManager->quit();
-            ccpsManager = nullptr;
+            cm->close();
         }
     } else {
-        ccpsManager->quit();
-        ccpsManager = nullptr;
+        cm->close();
         ui->connectList->clear();
         for (auto i: connectList)
             delete i;
@@ -86,10 +88,10 @@ void CCPSTest::connected(CCPS *ccps) {
     {
         QByteArray IP;
         unsigned short port;
-        newConnect->getTmpIPPort(IP, port);
+        newConnect.getTmpIPPort(IP, port);
         if (ipPort == IPPort(QHostAddress(IP), port)) {
-            newConnect->restoreUI();
-            newConnect->close();
+            newConnect.restoreUI();
+            newConnect.close();
         }
     }
 }
@@ -126,19 +128,20 @@ void CCPSTest::appendLog(const QString &data) {
 }
 
 void CCPSTest::connectFail(const QHostAddress &IP, unsigned short port, const QByteArray &data) {
-    newConnect->restoreUI();
-    QMessageBox::information(newConnect, IPPort(IP, port) + " 连接失败", data);
+    newConnect.restoreUI();
+    QMessageBox::information(&newConnect, IPPort(IP, port) + " 连接失败", data);
 }
 
 void CCPSTest::toConnect(const QByteArray &IP, unsigned short port) {
-    if (ccpsManager != nullptr)
-        ccpsManager->connectToHost(IP, port);
+    if (cm->isBind() > 0)
+        cm->connectToHost(IP, port);
 }
 
 void CCPSTest::closeEvent(QCloseEvent *e) {
-    if (ccpsManager != nullptr)ccpsManager->quit();
-    ccpsManager = nullptr;
-    if (newConnect != nullptr) newConnect->deleteLater();
-    newConnect = nullptr;
+    if (cm != nullptr)cm->quit();
+    cm = nullptr;
+    newConnect.close();
+    if (setCert != nullptr)setCert->deleteLater();
+    setCert = nullptr;
     QWidget::closeEvent(e);
 }

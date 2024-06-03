@@ -1,6 +1,7 @@
 #pragma once
 #include <QWidget>
-#include "CCPS/CCPS.h"
+
+class CCPS;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ShowMsg; }

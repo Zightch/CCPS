@@ -32,6 +32,9 @@ add_executable(
         ShowMsg/ShowMsg.ui
         ShowMsg/ShowMsg.cpp
 
+        SetCert/SetCert.cpp
+        SetCert/SetCert.ui
+
         CCPS/CCPS.cpp
         CCPS/CCPSManager.cpp
         tools/tools.cpp
