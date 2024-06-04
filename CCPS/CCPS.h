@@ -27,6 +27,7 @@ public:
     bool hasData();
 
     QByteArrayList readAll();
+
 public slots:
 
 signals:
@@ -48,7 +49,7 @@ private:
     };
 
     CCPSManager *cm = nullptr; // CCPSManager
-    char cs = -1; // -1未连接, 0半连接, 1连接成功, 2已断开
+    char cs = -1; // -1未连接, 0半连接, 1三次握手完成, 2已连接, 3已断开
     unsigned short ID = 0; // 自己的包ID
     unsigned short OID = -1; // 对方当前包ID
 
@@ -62,8 +63,8 @@ private:
     // 接收 -> 接收窗口 -> 接收缓存 -> 可读缓存 -> 准备好读取
     // NA数据包不需要走发送缓存和发送窗口, 直接发送
 
-    unsigned short wndSize = 256; // 窗口大小
-    unsigned short dataBlockSize = 13; // 可靠传输时数据块大小, 测试用13, 生产环境默认1013
+    unsigned short wndSize = 256; // 窗口大小, 最大65533
+    unsigned short dataBlockSize = 13; // 可靠传输时数据块大小, 测试用13, 生产环境默认1013, 最大65476
     QTimer hbt; // 心跳包定时器
     unsigned short hbtTime = 15000; // 心跳时间
     QHostAddress IP; // 远程主机IP
@@ -72,13 +73,21 @@ private:
     unsigned short timeout = 1000; // 超时时间
     unsigned char retryNum = 2; // 重试次数
 
+    QByteArray localCrt; // 本地证书
+    QByteArray localKey; // 本地私钥
+    QByteArray peerCrt; // 对端证书
+    QByteArray CA; // 用于验证对端的CA证书
+    QByteArray sharedKey; // 共享密钥
+    QByteArray IV; // IV数组
+    QTimer sexticTiming; // 6次握手定时器
+
     explicit CCPS(CCPSManager *, const QHostAddress &, unsigned short);
 
     ~CCPS() override;
 
     bool threadCheck_(const QString &); // 线程检查
 
-    void proc_(const QByteArray &); // 处理来者信息
+    void proc_(QByteArray); // 处理来者信息
 
     void connectToHost_(); // 连接到主机
 
@@ -88,9 +97,23 @@ private:
 
     void sendPackage_(CDPT *); // 返回值是NA
 
-    CDPT *newCDPT(); // new一个CDPT
+    CDPT *newCDPT_(); // new一个CDPT
 
-    void NA_ACK(unsigned short);
+    void NA_ACK_(unsigned short, const QByteArray & = {});
+
+    bool tryGenKeyPair_();
+
+    bool verify_();
+
+    void cmdRC_(const QByteArray &);
+
+    void cmdACK_(bool, bool, const QByteArray &);
+
+    void cmdRC_ACK_(bool, bool, const QByteArray &);
+
+    void cmdC_(bool, bool, const QByteArray &);
+
+    void cmdH_(bool, const QByteArray &);
 
     friend class CCPSManager;
 
@@ -108,5 +131,6 @@ private:
 
     unsigned char retryNum = 0;//重发次数
     unsigned short AID = 0;//应答包ID
+    bool isNotEncrypt = false;//该数据包不加密
     friend class CCPS;
 };

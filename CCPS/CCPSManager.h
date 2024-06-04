@@ -66,6 +66,13 @@ private:
     QUdpSocket *ipv6 = nullptr;
     bool isBindAll = false; // 判断是否是调用的QStringList bind(unsigned short);函数
 
+    QByteArray serverCrt;
+    QByteArray serverKey;
+    QByteArray verifyClientCrt;
+    QByteArray clientCrt;
+    QByteArray clientKey;
+    QByteArray verifyServerCrt;
+
     ~CCPSManager() override;
 
     void proc_(const QHostAddress &, unsigned short, const QByteArray &); // 处理来的信息

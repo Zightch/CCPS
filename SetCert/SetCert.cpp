@@ -68,13 +68,13 @@ void SetCert::OK() {
     }
     QString error;
     error = cm->setServerCrtAndKey(tmp[0], tmp[1]);
-    if (!error.isEmpty())errors += error + "\n";
+    if (!error.isEmpty())errors += "服务器证书: " + error + "\n";
     error = cm->setVerifyClientCrt(tmp[2]);
-    if (!error.isEmpty())errors += error + "\n";
+    if (!error.isEmpty())errors += "服务器证书: " + error + "\n";
     error = cm->setClientCrtAndKey(tmp[3], tmp[4]);
-    if (!error.isEmpty())errors += error + "\n";
+    if (!error.isEmpty())errors += "客户端证书: " + error + "\n";
     error = cm->setVerifyServerCrt(tmp[5]);
-    if (!error.isEmpty())errors += error + "\n";
+    if (!error.isEmpty())errors += "客户端证书: " + error + "\n";
     if (!errors.isEmpty()) {
         QMessageBox::information(this, "证书错误", errors);
         return;

@@ -1,0 +1,11 @@
+#pragma once
+
+#define SIGN_LEN 0x0040
+#define CRT_LEN 0x00C0
+#define KEY_LEN 0x0040
+#define START_TIME_INDEX 0x0040
+#define END_TIME_INDEX 0x0044
+#define ED25519_PUBKEY_INDEX 0x0020
+#define IP_FLAGS_INDEX 0x006F
+#define SHA521_LEN 64
+#define HEAD_RAND_LEN 32

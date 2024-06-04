@@ -5,6 +5,8 @@
 #include <QUdpSocket>
 #include <QNetworkDatagram>
 #include <QThread>
+#include "key.h"
+#include "CCPS_macro.h"
 
 #define THREAD_CHECK(ret) if (!threadCheck_(__FUNCTION__))return ret
 
@@ -16,16 +18,19 @@ void CCPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByte
         if (connecting.contains(ipPort))connecting[ipPort]->proc_(data);
         return;
     }
-    const char *dataC = data.data();
-    char cf = dataC[0];
+    if (data.size() != 3 + CRT_LEN + IV_LEN + HEAD_RAND_LEN && data.size() != 3 + LEN_25519 + IV_LEN + HEAD_RAND_LEN)return; // 数据包不完整
+    QByteArray content = data.mid(HEAD_RAND_LEN); // 获取C风格字符串
+    char cf = content.data()[0]; // 取cf
     if ((cf & 0x07) != 0x01)return; // 如果不是连接请求, 直接丢弃
-    if (data.size() < 3)return; // 数据包不完整
-    unsigned short SID = (*(unsigned short *) (dataC + 1)); // 提取SID
-    if (((cf >> 5) & 0x01) || SID != 0)return; // NA位不能为1, SID必须是0
+    unsigned short SID = (*(unsigned short *) (content.data() + 1)); // 提取SID
+    if (((cf >> 5) & 0x01) || !((cf >> 6) & 0x01) || SID != 0)return; // !NA, UD, SID=0
     if (ccps.size() >= connectNum)return; // 连接上限
     auto tmp = new CCPS(this, IP, port);
     connecting[ipPort] = tmp;
     connect(tmp, &CCPS::disconnected, this, &CCPSManager::requestInvalid_);
+    tmp->localCrt = serverCrt;
+    tmp->localKey = serverKey;
+    tmp->CA = verifyClientCrt;
     tmp->proc_(data);
 }
 
@@ -124,6 +129,9 @@ void CCPSManager::connectToHost(const QHostAddress &ip, unsigned short port) {
         auto tmp = new CCPS(this, ip, port);
         connecting[ipPort] = tmp;
         connect(tmp, &CCPS::disconnected, this, &CCPSManager::requestInvalid_);
+        tmp->localCrt = clientCrt;
+        tmp->localKey = clientKey;
+        tmp->CA = verifyServerCrt;
         tmp->connectToHost_();
     }
 }
@@ -136,8 +144,8 @@ void CCPSManager::recv_() { // 来源于udpSocket信号调用, 不会被别的�
         auto port = datagrams.senderPort();
         auto data = datagrams.data();
         if (!data.isEmpty()) {
-            proc_(IP, port, data);
             emit cLog("↓ " + IPPort(IP, port) + " : " + bytesToHexString(data));
+            proc_(IP, port, data);
         }
     }
 }
@@ -211,21 +219,85 @@ void CCPSManager::rmCCPS_() {
 }
 
 QString CCPSManager::setServerCrtAndKey(const QByteArray &crt, const QByteArray &key) {
-    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    THREAD_CHECK("不允许在其他线程调用该函数");
+    if (crt.isEmpty() ^ key.isEmpty())return "请同时指定证书和私钥";
+    if (crt.isEmpty()) {
+        serverKey.clear();
+        serverCrt.clear();
+        return {};
+    }
+    if (crt.size() != CRT_LEN)return "证书大小错误";
+    if (key.size() != KEY_LEN)return "私钥大小错误";
+    unsigned int startTime = *(unsigned int *) (crt.data() + START_TIME_INDEX);
+    unsigned int endTime = *(unsigned int *) (crt.data() + END_TIME_INDEX);
+    unsigned int currTime = QDateTime::currentSecsSinceEpoch() / 86400;
+    if (startTime > currTime || currTime > endTime)return "该证书已过期";
+    QByteArray targetPubKey;
+    targetPubKey.resize(LEN_25519);
+    if (GetPubKey((CUCP) key.data(), (UCP) targetPubKey.data()) <= 0)return "私钥错误";
+    if (targetPubKey != crt.mid(0, LEN_25519))return "公钥错误";
+    serverCrt = crt;
+    serverKey = key;
     return {};
 }
 
 QString CCPSManager::setVerifyClientCrt(const QByteArray &crt) {
-    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    THREAD_CHECK("不允许在其他线程调用该函数");
+    if (crt.isEmpty()) {
+        verifyClientCrt.clear();
+        return {};
+    }
+    if (crt.size() != CRT_LEN)return "证书大小错误";
+    int i;
+    for (i = ED25519_PUBKEY_INDEX; i < ED25519_PUBKEY_INDEX + LEN_25519; i += 8)
+        if (*(long long *) (crt.data() + i) != 0)break;
+    if (i == ED25519_PUBKEY_INDEX + LEN_25519)return "该证书不是CA证书";
+    unsigned int startTime = *(unsigned int *) (crt.data() + START_TIME_INDEX);
+    unsigned int endTime = *(unsigned int *) (crt.data() + END_TIME_INDEX);
+    unsigned int currTime = QDateTime::currentSecsSinceEpoch() / 86400;
+    if (startTime > currTime || currTime > endTime)return "该证书已过期";
+    verifyClientCrt = crt;
     return {};
 }
 
 QString CCPSManager::setClientCrtAndKey(const QByteArray &crt, const QByteArray &key) {
-    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    THREAD_CHECK("不允许在其他线程调用该函数");
+    if (crt.isEmpty() ^ key.isEmpty())return "请同时指定证书和私钥";
+    if (crt.isEmpty()) {
+        clientKey.clear();
+        clientCrt.clear();
+        return {};
+    }
+    if (crt.size() != CRT_LEN)return "证书大小错误";
+    if (key.size() != KEY_LEN)return "私钥大小错误";
+    unsigned int startTime = *(unsigned int *) (crt.data() + START_TIME_INDEX);
+    unsigned int endTime = *(unsigned int *) (crt.data() + END_TIME_INDEX);
+    unsigned int currTime = QDateTime::currentSecsSinceEpoch() / 86400;
+    if (startTime > currTime || currTime > endTime)return "该证书已过期";
+    QByteArray targetPubKey;
+    targetPubKey.resize(LEN_25519);
+    if (GetPubKey((CUCP) key.data(), (UCP) targetPubKey.data()) <= 0)return "私钥错误";
+    if (targetPubKey != crt.mid(0, LEN_25519))return "公钥错误";
+    clientCrt = crt;
+    clientKey = key;
     return {};
 }
 
 QString CCPSManager::setVerifyServerCrt(const QByteArray &crt) {
-    THREAD_CHECK("不允许在其他线程调用该函数"); // 不允许被别的线程调用
+    THREAD_CHECK("不允许在其他线程调用该函数");
+    if (crt.isEmpty()) {
+        verifyServerCrt.clear();
+        return {};
+    }
+    if (crt.size() != CRT_LEN)return "证书大小错误";
+    int i;
+    for (i = ED25519_PUBKEY_INDEX; i < ED25519_PUBKEY_INDEX + LEN_25519; i += 8)
+        if (*(long long *) (crt.data() + i) != 0)break;
+    if (i == ED25519_PUBKEY_INDEX + LEN_25519)return "该证书不是CA证书";
+    unsigned int startTime = *(unsigned int *) (crt.data() + START_TIME_INDEX);
+    unsigned int endTime = *(unsigned int *) (crt.data() + END_TIME_INDEX);
+    unsigned int currTime = QDateTime::currentSecsSinceEpoch() / 86400;
+    if (startTime > currTime || currTime > endTime)return "该证书已过期";
+    verifyServerCrt = crt;
     return {};
 }

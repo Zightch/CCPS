@@ -35,9 +35,11 @@ add_executable(
         SetCert/SetCert.cpp
         SetCert/SetCert.ui
 
+        tools/tools.cpp
         CCPS/CCPS.cpp
         CCPS/CCPSManager.cpp
-        tools/tools.cpp
+        CCPS/CCPS_secure.cpp
+        CCPS/CCPS_cmd.cpp
 )
 
 target_link_libraries(

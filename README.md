@@ -1,9 +1,10 @@
 # CCPS协议
-### 版本4
+### 版本5
 ### CSG framework host Communication Protocol Secure
 ### 安全CSG框架主机通信协议
 
 ## 更新日志
+* 定义`规定时间`, 加入随机数扰乱解密结果(5)
 * 加入证书和对端验证, 进行两次密钥交换(4)
 * 修改IV传输时间(3)
 * SCCL更名CCPS(2)
@@ -39,29 +40,33 @@
 <table>
     <tr>
         <td>字节</td>
-        <td>0</td>
-        <td>1</td>
-        <td>2</td>
-        <td>3</td>
-        <td>4</td>
-        <td>5</td>
-        <td>6</td>
+        <td>0 ~ 31</td>
+        <td>32</td>
+        <td>33</td>
+        <td>34</td>
+        <td>35</td>
+        <td>36</td>
+        <td>37</td>
+        <td>38</td>
         <td>...</td>
     </tr>
     <tr>
         <td>S0</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
         <td colspan=5></td>
     </tr>
     <tr>
         <td>S1</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>AID</td>
         <td colspan=5></td>
     </tr>
     <tr>
         <td>S2</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
         <td colspan=2>AID</td>
@@ -69,12 +74,14 @@
     </tr>
     <tr>
         <td>S3</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=6>data</td>
         <td>...</td>
     </tr>
     <tr>
         <td>S4</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
         <td colspan=4>data</td>
@@ -82,6 +89,7 @@
     </tr>
     <tr>
         <td>S5</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
         <td colspan=2>AID</td>
@@ -90,6 +98,7 @@
     </tr>
     <tr>
         <td>S6</td>
+        <td>rand</td>
         <td>cf</td>
         <td colspan=2>AID</td>
         <td colspan=4>data</td>
@@ -98,6 +107,7 @@
 </table>
 
 * 在原有基础上增加S5和S6两种结构体
+* 头部加入32个字节的随机数用来扰乱加密后的规律性
 
 ## 证书
 参见分支`cert`  
@@ -114,7 +124,7 @@ sequenceDiagram
   activate P2
   Note left of P1: OID = -1 ID = 0
   Note right of P2: ID = 0 OID = 0
-  P2 ->> P1: UD RC ACK SID=0 AID=0 pk|cert
+  P2 ->> P1: UD RC ACK SID=0 AID=0 pk|cert time
   deactivate P2
   activate P1
   Note left of P1: OID = 0 ID = 1
@@ -160,7 +170,8 @@ sequenceDiagram
   因此pk只需要32个字节传输公钥即可
 * 第一次握手中的IV为16个字节的IV数组  
   为`AES-256-GCM`加密使用
-* UD NA ACK AID=0 data中的data需要包含32个字节的共享密钥并且加密传输  
+* 第三次握手  
+  UD NA ACK AID=0 data中的data需要包含32个字节的共享密钥并且加密传输  
   其作用为验证双方的密钥是否相同  
   以防止在握手过程中数据包被修改导致的安全通道无法建立  
   若对方主机发现共享密钥与自己生成的不一致, 需要立刻终止本次通讯
@@ -173,6 +184,9 @@ sequenceDiagram
   必须继续交换密钥: [6次握手](#6次握手前3次省略), 仍然使用`X25519`算法  
   如果在`规定时间`内没有继续交换密钥, 立刻终止连接
   `规定时间`为自己定义, 一般为`(重试次数+1)*单次超时时间`  
+  在第2次握手时服务端方可以带一个4字节的time以表示`规定时间`, 这个是可选的  
+  **最大不超过30s**  
+  为了防止双方的重试次数以及单次超时时间不一致  
   注意: 这个密钥必须足够的随机  
   最后一次握手需要发起方(P1)用新共享密钥+旧IV再传一个新的IV给对方
 * 在任何握手或者数据传输过程中出现任何错误必须立刻C NA断开连接
