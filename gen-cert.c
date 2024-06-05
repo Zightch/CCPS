@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
     }
 
     // 获取开始时间
-    unsigned start_time = time(NULL) / 86400; // 以天为单位
+    unsigned int start_time = time(NULL) / 86400; // 以天为单位
     // 检查有效期
     char *end_ptr;
     long long tmp = strtol(argv[3], &end_ptr, 10);
