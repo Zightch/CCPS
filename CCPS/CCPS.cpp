@@ -67,12 +67,18 @@ void CCPS::proc_(QByteArray data) { // 该函数只能被CCPSManager调用
     } else {
         if (!NA) {//需要回复
             unsigned short SID = (*(unsigned short *) (data.data() + 1));
-            NA_ACK_(SID);
-            if (UD) { // 有用户数据
-                if (recvWnd.contains(SID) && !RT)close("窗口数据发生重叠"); // 如果窗口包含该数据而且不是重发包
-                else if (!RT || !recvWnd.contains(SID)) { //如果是重发包，并且接收窗口中已经有该数据，则不需要再次存储
-                    // 从数据包中提取用户数据，跳过前三个字节的头部信息
-                    recvWnd[SID] = {cf, SID, data.mid(3)};
+            if (!initiative && cs == 1 && ID == 2 && OID == 1 && SID == 2 && data.mid(3).size() == IV_LEN && UD && !UDL) {
+                IV = data.mid(3);
+                OID++;
+                NA_ACK_(SID);
+            } else {
+                NA_ACK_(SID);
+                if (UD) { // 有用户数据
+                    if (recvWnd.contains(SID) && !RT)close("窗口数据发生重叠"); // 如果窗口包含该数据而且不是重发包
+                    else if (!RT || !recvWnd.contains(SID)) { //如果是重发包，并且接收窗口中已经有该数据，则不需要再次存储
+                        // 从数据包中提取用户数据，跳过前三个字节的头部信息
+                        recvWnd[SID] = {cf, SID, data.mid(3)};
+                    }
                 }
             }
         } else if (UD && cs == 2) {//有用户数据
@@ -81,7 +87,41 @@ void CCPS::proc_(QByteArray data) { // 该函数只能被CCPSManager调用
         }
     }
     updateWnd_();
-    // TODO 6次握手
+
+    if (cs == 1 && ID == 2 && OID == 1 && readBuf.size() == 1) { // 完成密钥交换
+        sharedKey.clear();
+        sharedKey.resize(LEN_25519);
+        if (GenSharedKey((CUCP) localKey.data(), (CUCP) readBuf[0].data(), (UCP) sharedKey.data()) <= 0) {
+            sharedKey.clear();
+            IV.clear();
+            cs = 3;
+            close("共享密钥生成失败");
+            return;
+        }
+        readBuf.pop_front();
+        if (initiative) { // 主动生成IV并发送
+            QByteArray newIV;
+            newIV.resize(IV_LEN);
+            Rand((UCP) newIV.data(), IV_LEN);
+            sendBufLv2.append(newIV);
+            updateWnd_();
+            IV = newIV;
+        }
+    }
+    if (initiative && cs == 1 && ID == 3 && OID == 1) { // 对方已接受IV
+        // 连接成功
+        cs = 2;
+        sexticTiming.stop();
+        cm->ccpsConnected_(this);
+        hbt.start(hbtTime);
+    }
+    if (!initiative && cs == 1 && ID == 2 && OID == 2) { // 我已读取IV
+        // 连接成功
+        cs = 2;
+        sexticTiming.stop();
+        cm->ccpsConnected_(this);
+        hbt.start(hbtTime);
+    }
 }
 
 void CCPS::send(const QByteArray &data) {

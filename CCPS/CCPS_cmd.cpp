@@ -8,7 +8,7 @@ void CCPS::cmdRC_(const QByteArray &data) { // 已经被CCPSManager过滤过了,
     IV = data.mid(3, IV_LEN); // 提取IV
     peerCrt = data.mid(3 + IV_LEN); // 提取对端证书
     if (!verify_()) {
-        close("证书验证失败");
+        close("客户端证书验证失败");
         return;
     }
     if (!tryGenKeyPair_()) {
@@ -32,7 +32,7 @@ void CCPS::cmdRC_(const QByteArray &data) { // 已经被CCPSManager过滤过了,
     cdpt->isNotEncrypt = true;
     if (peerCrt.size() == CRT_LEN || localCrt.size() == CRT_LEN) { // 如果任意一方使用证书
         int time = (retryNum + 1) * timeout;
-        if (time > 30)time = 30;
+        if (time > 30000)time = 30000;
         cdpt->data.append((char *) &time, sizeof(time));
         sexticTiming.setInterval(time);
     }
@@ -50,7 +50,9 @@ void CCPS::cmdACK_(bool NA, bool UD, const QByteArray &data) {
             sendWnd[AID]->stop();
             if (data.mid(3) != sharedKey) {
                 cs = 3;
-                close("共享密钥不相等");
+                sharedKey.clear();
+                IV.clear();
+                close("共享密钥错误");
                 return;
             }
             if (peerCrt.size() == CRT_LEN || localCrt.size() == CRT_LEN) { // 如果任意一方使用证书
@@ -58,7 +60,7 @@ void CCPS::cmdACK_(bool NA, bool UD, const QByteArray &data) {
                 sexticTiming.start();
                 localCrt.clear();
                 localKey.clear();
-                if (tryGenKeyPair_()) {
+                if (!tryGenKeyPair_()) {
                     close("6次握手密钥对生成失败");
                     return;
                 }
@@ -83,18 +85,24 @@ void CCPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
             sendWnd.remove(0);
             peerCrt = data.mid(5);
             if (peerCrt.size() != CRT_LEN && peerCrt.size() != LEN_25519 && peerCrt.size() != CRT_LEN + 4 && peerCrt.size() != LEN_25519 + 4) {
+                cs = 3;
+                sharedKey.clear();
+                IV.clear();
                 close("证书长度不正确");
                 return;
             }
             if (peerCrt.size() == LEN_25519 + 4 || peerCrt.size() == CRT_LEN + 4) { // 撇去后面4个字节的时间
                 auto tmp = peerCrt.mid(peerCrt.size() - 4, 4);
                 unsigned int time = *(unsigned int *) tmp.data();
-                if (time > 30)time = 30;
+                if (time > 30000)time = 30000;
                 peerCrt = peerCrt.mid(0, peerCrt.size() - 4);
                 sexticTiming.setInterval((int) time);
             }
             if (!verify_()) {
-                close("证书验证失败");
+                cs = 3;
+                sharedKey.clear();
+                IV.clear();
+                close("服务器证书验证失败");
                 return;
             }
             sharedKey.resize(LEN_25519);
@@ -113,7 +121,7 @@ void CCPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
                 sexticTiming.start();
                 localCrt.clear();
                 localKey.clear();
-                if (tryGenKeyPair_()) {
+                if (!tryGenKeyPair_()) {
                     close("6次握手密钥对生成失败");
                     return;
                 }
