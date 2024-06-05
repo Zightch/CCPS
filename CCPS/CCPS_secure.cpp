@@ -41,7 +41,7 @@ bool CCPS::verify_() {
     QByteArray crtContent = peerCrt.mid(0, CRT_LEN - SIGN_LEN); // 证书内容
     QByteArray sign = peerCrt.mid(CRT_LEN - SIGN_LEN); // 签名数据
     QByteArray sha512;
-    sha512.resize(SHA521_LEN);
+    sha512.resize(SHA512_LEN);
     if (Sha512((CUCP) crtContent.data(), (int) crtContent.size(), (UCP) sha512.data()) <= 0)
         return false; // 计算SHA512失败
     return Verify((CUCP) pubKey.data(), (CUCP) sha512.data(), (int) sha512.size(), (CUCP) sign.data(), (int) sign.size()) == 1;
