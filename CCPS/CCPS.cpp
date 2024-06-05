@@ -309,7 +309,7 @@ QByteArrayList CCPS::readAll() {
 void CCPS::NA_ACK_(unsigned short AID, const QByteArray &data) {
     auto cdpt = new CDPT(this);
     cdpt->AID = AID;
-    cdpt->cf = 0x62;
+    cdpt->cf = 0x22;
     if (!data.isEmpty()) {
         cdpt->cf |= 0x40;
         cdpt->data = data;
