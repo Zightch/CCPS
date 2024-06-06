@@ -1,10 +1,10 @@
 #include "SetCert.h"
 #include "ui_SetCert.h"
-#include "CCPS/CCPSManager.h"
+#include "CFUPS/CFUPSManager.h"
 #include <QFileDialog>
 #include <QMessageBox>
 
-SetCert::SetCert(CCPSManager *cm, QWidget *parent) : QDialog(parent), ui(new Ui::SetCert), cm(cm) {
+SetCert::SetCert(CFUPSManager *cm, QWidget *parent) : QDialog(parent), ui(new Ui::SetCert), cm(cm) {
     ui->setupUi(this);
 
     lineEdits[0] = ui->serverCrt;

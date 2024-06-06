@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>CCPSTest</class>
- <widget class="QWidget" name="CCPSTest">
+ <class>CFUPSTest</class>
+ <widget class="QWidget" name="CFUPSTest">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>CCPS测试</string>
+   <string>CFUPS测试</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>

@@ -1,9 +1,9 @@
-#include "CCPS.h"
+#include "CFUPS.h"
 #include "key.h"
-#include "CCPS_macro.h"
+#include "CFUPS_macro.h"
 #include <QDateTime>
 
-bool CCPS::tryGenKeyPair_() {
+bool CFUPS::tryGenKeyPair_() {
     if (localCrt.isEmpty()) { // 如果没有使用证书
         localCrt.resize(LEN_25519);
         localKey.resize(LEN_25519);
@@ -12,7 +12,7 @@ bool CCPS::tryGenKeyPair_() {
     return true;
 }
 
-bool CCPS::verify_() {
+bool CFUPS::verify_() {
     if (!CA.isEmpty() && peerCrt.size() != CRT_LEN)return false; // 如果我有CA但是对方没有发证书
     if (peerCrt.size() != CRT_LEN)return true; // 验证证书合法性
     unsigned int startTime = *(unsigned int *) (peerCrt.data() + START_TIME_INDEX);

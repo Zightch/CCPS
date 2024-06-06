@@ -4,11 +4,11 @@
 #include <QHash>
 #include <QHostAddress>
 
-class CCPSManager;
+class CFUPSManager;
 class CDPT;
 
-//CCPS协议对象类(实现)
-class CCPS final : public QObject {
+//CFUPS协议对象类(实现)
+class CFUPS final : public QObject {
 Q_OBJECT
 
 public:
@@ -41,20 +41,20 @@ private slots:
     void sendTimeout_();
 
 private:
-    class CCPSDP {//纯数据
+    class CFUPSDP {//纯数据
     public:
         unsigned char cf = 0;//属性和命令
         unsigned short SID = 0;//本包ID
         QByteArray data{};//用户数据
     };
 
-    CCPSManager *cm = nullptr; // CCPSManager
+    CFUPSManager *cm = nullptr; // CFUPSManager
     char cs = -1; // -1未连接, 0半连接, 1三次握手完成, 2已连接, 3已断开
     unsigned short ID = 0; // 自己的包ID
     unsigned short OID = -1; // 对方当前包ID
 
     QHash<unsigned short, CDPT *> sendWnd; // 发送窗口
-    QHash<unsigned short, CCPSDP> recvWnd; // 接收窗口
+    QHash<unsigned short, CFUPSDP> recvWnd; // 接收窗口
     QList<CDPT *> sendBufLv1; // 发送1级缓存
     QByteArrayList readBuf; // 可读缓存
     QByteArrayList sendBufLv2; // 发送2级缓存
@@ -81,9 +81,9 @@ private:
     QByteArray IV; // IV数组
     QTimer sexticTiming; // 6次握手定时器
 
-    explicit CCPS(CCPSManager *, const QHostAddress &, unsigned short);
+    explicit CFUPS(CFUPSManager *, const QHostAddress &, unsigned short);
 
-    ~CCPS() override;
+    ~CFUPS() override;
 
     bool threadCheck_(const QString &); // 线程检查
 
@@ -115,13 +115,13 @@ private:
 
     void cmdH_(bool, const QByteArray &);
 
-    friend class CCPSManager;
+    friend class CFUPSManager;
 
     friend class CDPT;
 };
 
-//CCPS数据包+定时器(定义)
-class CDPT : public QTimer, public CCPS::CCPSDP {
+//CFUPS数据包+定时器(定义)
+class CDPT : public QTimer, public CFUPS::CFUPSDP {
 Q_OBJECT
 
 private:
@@ -132,5 +132,5 @@ private:
     unsigned char retryNum = 0;//重发次数
     unsigned short AID = 0;//应答包ID
     bool isNotEncrypt = false;//该数据包不加密
-    friend class CCPS;
+    friend class CFUPS;
 };

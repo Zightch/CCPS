@@ -4,14 +4,14 @@
 #include <QObject>
 #include <QHash>
 
-class CCPS;
+class CFUPS;
 class QUdpSocket;
 
-class CCPSManager final : public QObject {
+class CFUPSManager final : public QObject {
 Q_OBJECT
 
 public:
-    explicit CCPSManager(QObject * = nullptr);
+    explicit CFUPSManager(QObject * = nullptr);
 
     QString bind(const QString &, unsigned short); // 绑定
 
@@ -41,7 +41,7 @@ signals:
 
     void connectFail(const QHostAddress &, unsigned short, const QByteArray &); // 我方主动连接连接失败
 
-    void connected(CCPS *); // 连接成功(包含我方主动与对方请求)
+    void connected(CFUPS *); // 连接成功(包含我方主动与对方请求)
 
     void cLog(const QString &);
 
@@ -56,12 +56,12 @@ private slots:
 
     void recv_(); // 接收数据
 
-    void rmCCPS_();
+    void rmCFUPS_();
 
 private:
-    QHash<QString, CCPS *> ccps; // 已连接的
+    QHash<QString, CFUPS *> cfups; // 已连接的
     int connectNum = 65535; // 最大连接数量
-    QHash<QString, CCPS *> connecting; // 连接中的ccps
+    QHash<QString, CFUPS *> connecting; // 连接中的cfups
     QUdpSocket *ipv4 = nullptr;
     QUdpSocket *ipv6 = nullptr;
     bool isBindAll = false; // 判断是否是调用的QStringList bind(unsigned short);函数
@@ -73,7 +73,7 @@ private:
     QByteArray clientKey;
     QByteArray verifyServerCrt;
 
-    ~CCPSManager() override;
+    ~CFUPSManager() override;
 
     void proc_(const QHostAddress &, unsigned short, const QByteArray &); // 处理来的信息
 
@@ -81,9 +81,9 @@ private:
 
     bool threadCheck_(const QString &); // 线程检查
 
-    void ccpsConnected_(CCPS *);
+    void cfupsConnected_(CFUPS *);
 
     void requestInvalid_(const QByteArray &);
 
-    friend class CCPS;
+    friend class CFUPS;
 };

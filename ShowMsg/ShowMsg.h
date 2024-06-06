@@ -1,7 +1,7 @@
 #pragma once
 #include <QWidget>
 
-class CCPS;
+class CFUPS;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ShowMsg; }
@@ -11,14 +11,14 @@ class ShowMsg : public QWidget {
 Q_OBJECT
 
 public:
-    explicit ShowMsg(CCPS *, QWidget * = nullptr);
+    explicit ShowMsg(CFUPS *, QWidget * = nullptr);
 
     ~ShowMsg() override;
 
-    CCPS *getCCPS();
+    CFUPS *getCFUPS();
 private:
     Ui::ShowMsg *ui;
-    CCPS *ccps = nullptr;
+    CFUPS *cfups = nullptr;
     QString sendLastHexStr;
     QByteArrayList recvData;
 private slots:

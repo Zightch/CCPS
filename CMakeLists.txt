@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-set(projectName CCPSTest)
+set(projectName CFUPSTest)
 project(${projectName} LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -23,8 +23,8 @@ add_executable(
         ${projectName}
         main.cpp
 
-        CCPSTest/CCPSTest.ui
-        CCPSTest/CCPSTest.cpp
+        CFUPSTest/CFUPSTest.ui
+        CFUPSTest/CFUPSTest.cpp
 
         NewConnect/NewConnect.cpp
         NewConnect/NewConnect.ui
@@ -36,10 +36,10 @@ add_executable(
         SetCert/SetCert.ui
 
         tools/tools.cpp
-        CCPS/CCPS.cpp
-        CCPS/CCPSManager.cpp
-        CCPS/CCPS_secure.cpp
-        CCPS/CCPS_cmd.cpp
+        CFUPS/CFUPS.cpp
+        CFUPS/CFUPSManager.cpp
+        CFUPS/CFUPS_secure.cpp
+        CFUPS/CFUPS_cmd.cpp
 )
 
 target_link_libraries(

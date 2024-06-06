@@ -1,14 +1,14 @@
-#include "CCPS.h"
-#include "CCPSManager.h"
+#include "CFUPS.h"
+#include "CFUPSManager.h"
 #include <QDateTime>
 #include <QThread>
 #include "tools/tools.h"
 #include "key.h"
-#include "CCPS_macro.h"
+#include "CFUPS_macro.h"
 
 #define THREAD_CHECK(ret) if (!threadCheck_(__FUNCTION__))return ret
 
-CCPS::CCPS(CCPSManager *parent, const QHostAddress &IP, unsigned short p) : QObject(parent), IP(IP), port(p), cm(parent) {
+CFUPS::CFUPS(CFUPSManager *parent, const QHostAddress &IP, unsigned short p) : QObject(parent), IP(IP), port(p), cm(parent) {
     connect(&hbt, &QTimer::timeout, this, [&]() {
         auto *cdpt = newCDPT_();
         cdpt->cf = 0x05;
@@ -21,7 +21,7 @@ CCPS::CCPS(CCPSManager *parent, const QHostAddress &IP, unsigned short p) : QObj
     });
 }
 
-bool CCPS::threadCheck_(const QString &funcName) {
+bool CFUPS::threadCheck_(const QString &funcName) {
     if (QThread::currentThread() == thread())return true;
     qWarning()
             << "函数" << funcName << "不允许在其他线程调用, 操作被拒绝.\n"
@@ -29,17 +29,17 @@ bool CCPS::threadCheck_(const QString &funcName) {
     return false;
 }
 
-QHostAddress CCPS::getIP() {
+QHostAddress CFUPS::getIP() {
     THREAD_CHECK(QHostAddress::Null);
     return IP;
 }
 
-unsigned short CCPS::getPort() {
+unsigned short CFUPS::getPort() {
     THREAD_CHECK(0);
     return port;
 }
 
-void CCPS::proc_(QByteArray data) { // 该函数只能被CCPSManager调用
+void CFUPS::proc_(QByteArray data) { // 该函数只能被CFUPSManager调用
     if (sharedKey.size() == LEN_25519 && IV.size() == IV_LEN) { // 如果共享密钥与IV准备好了
         QByteArray cipher = data;
         data.clear();
@@ -112,26 +112,26 @@ void CCPS::proc_(QByteArray data) { // 该函数只能被CCPSManager调用
         // 连接成功
         cs = 2;
         sexticTiming.stop();
-        cm->ccpsConnected_(this);
+        cm->cfupsConnected_(this);
         hbt.start(hbtTime);
     }
     if (!initiative && cs == 1 && ID == 2 && OID == 2) { // 我已读取IV
         // 连接成功
         cs = 2;
         sexticTiming.stop();
-        cm->ccpsConnected_(this);
+        cm->cfupsConnected_(this);
         hbt.start(hbtTime);
     }
 }
 
-void CCPS::send(const QByteArray &data) {
+void CFUPS::send(const QByteArray &data) {
     THREAD_CHECK();
     if (cs != 2 || data.isEmpty())return;
     sendBufLv2.append(data);
     updateWnd_();
 }
 
-void CCPS::sendNow(const QByteArray &data) {
+void CFUPS::sendNow(const QByteArray &data) {
     THREAD_CHECK();
     if (cs != 2 || data.isEmpty())return;
     auto *tmp = new CDPT(this);
@@ -141,7 +141,7 @@ void CCPS::sendNow(const QByteArray &data) {
     delete tmp;
 }
 
-void CCPS::connectToHost_() { // 该函数只能被CCPSManager调用
+void CFUPS::connectToHost_() { // 该函数只能被CFUPSManager调用
     if (cs != -1)return;
     initiative = true;
     IV.resize(IV_LEN);
@@ -159,7 +159,7 @@ void CCPS::connectToHost_() { // 该函数只能被CCPSManager调用
     updateWnd_();
 }
 
-void CCPS::close(const QByteArray &data) {
+void CFUPS::close(const QByteArray &data) {
     THREAD_CHECK();
     if (cs != 3) {
         auto cdpt = new CDPT(this);
@@ -182,7 +182,7 @@ void CCPS::close(const QByteArray &data) {
     emit disconnected(data);
 }
 
-void CCPS::updateWnd_() {
+void CFUPS::updateWnd_() {
     // 更新发送窗口
     while (sendWnd.contains(ID)) { // 释放掉已经接收停止的数据包
         if (sendWnd[ID]->isActive())break; // 如果数据包还未被接收, break
@@ -210,7 +210,7 @@ void CCPS::updateWnd_() {
     if (!readBuf.isEmpty() && cs == 2)emit readyRead();
 }
 
-void CCPS::sendPackage_(CDPT *cdpt) { // 只负责构造数据包和发送
+void CFUPS::sendPackage_(CDPT *cdpt) { // 只负责构造数据包和发送
     QByteArray data;
     data.append((char) cdpt->cf);
     unsigned char cmd = (char) (cdpt->cf & (char) 0x07);
@@ -237,7 +237,7 @@ void CCPS::sendPackage_(CDPT *cdpt) { // 只负责构造数据包和发送
     cm->send_(IP, port, data);
 }
 
-void CCPS::updateSendBuf_() { // 更新发送缓存
+void CFUPS::updateSendBuf_() { // 更新发送缓存
     // 从二级缓存解包到一级缓存
     if (!sendBufLv1.isEmpty() || sendBufLv2.isEmpty())return;
     auto data = sendBufLv2.front(); // 拿一个数据
@@ -272,13 +272,13 @@ void CCPS::updateSendBuf_() { // 更新发送缓存
     }
 }
 
-CDPT *CCPS::newCDPT_() {
+CDPT *CFUPS::newCDPT_() {
     auto *cdpt = new CDPT(this);
-    connect(cdpt, &CDPT::timeout, this, &CCPS::sendTimeout_);
+    connect(cdpt, &CDPT::timeout, this, &CFUPS::sendTimeout_);
     return cdpt;
 }
 
-void CCPS::sendTimeout_() { // 只做重发包逻辑和重试次数过多逻辑
+void CFUPS::sendTimeout_() { // 只做重发包逻辑和重试次数过多逻辑
     auto cdpt = (CDPT *) sender();
     if (cdpt->retryNum < retryNum) {
         cdpt->retryNum++;
@@ -287,26 +287,26 @@ void CCPS::sendTimeout_() { // 只做重发包逻辑和重试次数过多逻辑
     } else close("对方应答超时");
 }
 
-QByteArray CCPS::nextPendingData() {
+QByteArray CFUPS::nextPendingData() {
     THREAD_CHECK({});
     auto tmp = readBuf.front();
     readBuf.pop_front();
     return tmp;
 }
 
-bool CCPS::hasData() {
+bool CFUPS::hasData() {
     THREAD_CHECK(false);
     return !readBuf.isEmpty();
 }
 
-QByteArrayList CCPS::readAll() {
+QByteArrayList CFUPS::readAll() {
     THREAD_CHECK({});
     auto tmp = readBuf;
     readBuf.clear();
     return tmp;
 }
 
-void CCPS::NA_ACK_(unsigned short AID, const QByteArray &data) {
+void CFUPS::NA_ACK_(unsigned short AID, const QByteArray &data) {
     auto cdpt = new CDPT(this);
     cdpt->AID = AID;
     cdpt->cf = 0x22;
@@ -318,7 +318,7 @@ void CCPS::NA_ACK_(unsigned short AID, const QByteArray &data) {
     delete cdpt;
 }
 
-CCPS::~CCPS() = default;
+CFUPS::~CFUPS() = default;
 
 CDPT::CDPT(QObject *parent) : QTimer(parent) {}
 

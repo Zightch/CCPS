@@ -2,7 +2,7 @@
 
 #include <QDialog>
 
-class CCPSManager;
+class CFUPSManager;
 class QLineEdit;
 
 QT_BEGIN_NAMESPACE
@@ -13,13 +13,13 @@ class SetCert : public QDialog {
 Q_OBJECT
 
 public:
-    explicit SetCert(CCPSManager *cm, QWidget *parent = nullptr);
+    explicit SetCert(CFUPSManager *cm, QWidget *parent = nullptr);
 
     ~SetCert() override;
 
 private:
     Ui::SetCert *ui;
-    CCPSManager *cm = nullptr;
+    CFUPSManager *cm = nullptr;
     QLineEdit *lineEdits[6] = {nullptr};
     QPushButton *btns[6] = {nullptr};
 

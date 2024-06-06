@@ -1,28 +1,28 @@
-#include "CCPSTest.h"
-#include "./ui_CCPSTest.h"
+#include "CFUPSTest.h"
+#include "./ui_CFUPSTest.h"
 #include <QMessageBox>
 #include "tools/tools.h"
-#include "CCPS/CCPSManager.h"
-#include "CCPS/CCPS.h"
+#include "CFUPS/CFUPSManager.h"
+#include "CFUPS/CFUPS.h"
 
-CCPSTest::CCPSTest(QWidget *parent) : QWidget(parent), ui(new Ui::CCPSTest) {
+CFUPSTest::CFUPSTest(QWidget *parent) : QWidget(parent), ui(new Ui::CFUPSTest) {
     ui->setupUi(this);
-    cm = new CCPSManager(this);
+    cm = new CFUPSManager(this);
     setCert = new SetCert(cm);
-    connect(ui->bind, &QPushButton::clicked, this, &CCPSTest::bind);
-    connect(ui->connectList, &QListWidget::itemSelectionChanged, this, &CCPSTest::enableOperateBtn);
-    connect(ui->showMsg, &QPushButton::clicked, this, &CCPSTest::showMsg);
-    connect(ui->closeConnect, &QPushButton::clicked, this, &CCPSTest::closeConnect);
+    connect(ui->bind, &QPushButton::clicked, this, &CFUPSTest::bind);
+    connect(ui->connectList, &QListWidget::itemSelectionChanged, this, &CFUPSTest::enableOperateBtn);
+    connect(ui->showMsg, &QPushButton::clicked, this, &CFUPSTest::showMsg);
+    connect(ui->closeConnect, &QPushButton::clicked, this, &CFUPSTest::closeConnect);
     connect(ui->newConnect, &QPushButton::clicked, &newConnect, &NewConnect::show);
     connect(ui->crtBtn, &QPushButton::clicked, setCert, &SetCert::exec);
-    connect(&newConnect, &NewConnect::toConnect, this, &CCPSTest::toConnect);
+    connect(&newConnect, &NewConnect::toConnect, this, &CFUPSTest::toConnect);
 }
 
-CCPSTest::~CCPSTest() {
+CFUPSTest::~CFUPSTest() {
     delete ui;
 }
 
-void CCPSTest::bind() {
+void CFUPSTest::bind() {
     auto uiCTRL = [this](bool i) {
         ui->localIP->setEnabled(!i);
         ui->localPort->setEnabled(!i);
@@ -41,9 +41,9 @@ void CCPSTest::bind() {
         if (error.isEmpty()) {
             ui->bind->setText("关闭");
             uiCTRL(true);
-            connect(cm, &CCPSManager::connected, this, &CCPSTest::connected);
-            connect(cm, &CCPSManager::connectFail, this, &CCPSTest::connectFail);
-            connect(cm, &CCPSManager::cLog, this, &CCPSTest::appendLog);
+            connect(cm, &CFUPSManager::connected, this, &CFUPSTest::connected);
+            connect(cm, &CFUPSManager::connectFail, this, &CFUPSTest::connectFail);
+            connect(cm, &CFUPSManager::cLog, this, &CFUPSTest::appendLog);
         } else {
             QString tmp;
             for (const auto &i: error)tmp += (i + "\n");
@@ -63,27 +63,27 @@ void CCPSTest::bind() {
     }
 }
 
-void CCPSTest::closeConnect() {
+void CFUPSTest::closeConnect() {
     auto item = ui->connectList->currentItem();
     auto client = connectList[item->text()];
-    client->getCCPS()->close();
+    client->getCFUPS()->close();
 }
 
-void CCPSTest::enableOperateBtn() {
+void CFUPSTest::enableOperateBtn() {
     ui->showMsg->setEnabled(true);
     ui->closeConnect->setEnabled(true);
 }
 
-void CCPSTest::connected(CCPS *ccps) {
+void CFUPSTest::connected(CFUPS *cfups) {
     //在客户端列表里添加一个元素(IP:port)
-    auto ipPort = IPPort(ccps->getIP(), ccps->getPort());
+    auto ipPort = IPPort(cfups->getIP(), cfups->getPort());
     if (!connectList.contains(ipPort)) {
         ui->connectList->addItem(ipPort);
         //去构造一个ShowMsg窗口, 以备显示
-        auto sm = new ShowMsg(ccps);
+        auto sm = new ShowMsg(cfups);
         //Map保存所有客户端(ShowMsg)
         connectList.insert(ipPort, sm);
-        connect(ccps, &CCPS::disconnected, this, &CCPSTest::disconnected);
+        connect(cfups, &CFUPS::disconnected, this, &CFUPSTest::disconnected);
     }
     {
         QByteArray IP;
@@ -96,14 +96,14 @@ void CCPSTest::connected(CCPS *ccps) {
     }
 }
 
-void CCPSTest::showMsg() {
+void CFUPSTest::showMsg() {
     auto ipPort = ui->connectList->currentItem()->text();
     connectList[ipPort]->show();
 }
 
-void CCPSTest::disconnected() {
-    auto ccps = (CCPS *) sender();
-    auto ipPort = IPPort(ccps->getIP(), ccps->getPort());
+void CFUPSTest::disconnected() {
+    auto cfups = (CFUPS *) sender();
+    auto ipPort = IPPort(cfups->getIP(), cfups->getPort());
     //窗口
     auto client = connectList[ipPort];
     delete client;
@@ -123,21 +123,21 @@ void CCPSTest::disconnected() {
     }
 }
 
-void CCPSTest::appendLog(const QString &data) {
+void CFUPSTest::appendLog(const QString &data) {
     ui->logger->appendPlainText(data);
 }
 
-void CCPSTest::connectFail(const QHostAddress &IP, unsigned short port, const QByteArray &data) {
+void CFUPSTest::connectFail(const QHostAddress &IP, unsigned short port, const QByteArray &data) {
     newConnect.restoreUI();
     QMessageBox::information(&newConnect, IPPort(IP, port) + " 连接失败", data);
 }
 
-void CCPSTest::toConnect(const QByteArray &IP, unsigned short port) {
+void CFUPSTest::toConnect(const QByteArray &IP, unsigned short port) {
     if (cm->isBind() > 0)
         cm->connectToHost(IP, port);
 }
 
-void CCPSTest::closeEvent(QCloseEvent *e) {
+void CFUPSTest::closeEvent(QCloseEvent *e) {
     if (cm != nullptr)cm->quit();
     cm = nullptr;
     newConnect.close();

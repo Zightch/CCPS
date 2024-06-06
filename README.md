@@ -1,9 +1,10 @@
-# CCPS协议
-### 版本5
-### CSG framework host Communication Protocol Secure
-### 安全CSG框架主机通信协议
+# CFUPS协议
+### 版本6
+### CSG Framework Universal Protocol Secure
+### 安全CSG框架通用协议
 
 ## 更新日志
+* CCPS更名CFUPS(6)
 * 定义`规定时间`, 加入随机数扰乱加密结果(5)
 * 加入证书和对端验证, 进行两次密钥交换(4)
 * 修改IV传输时间(3)

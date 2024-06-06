@@ -2,13 +2,13 @@
 #include "ui_ShowMsg.h"
 #include "tools/tools.h"
 #include <QRegularExpression>
-#include "CCPS/CCPS.h"
+#include "CFUPS/CFUPS.h"
 
-ShowMsg::ShowMsg(CCPS *ccps, QWidget *parent) : QWidget(parent), ui(new Ui::ShowMsg) {
+ShowMsg::ShowMsg(CFUPS *cfups, QWidget *parent) : QWidget(parent), ui(new Ui::ShowMsg) {
     ui->setupUi(this);
-    this->ccps = ccps;
-    setWindowTitle(IPPort(ccps->getIP(), ccps->getPort()));
-    connect(ccps, &CCPS::readyRead, this, &ShowMsg::recv);
+    this->cfups = cfups;
+    setWindowTitle(IPPort(cfups->getIP(), cfups->getPort()));
+    connect(cfups, &CFUPS::readyRead, this, &ShowMsg::recv);
     connect(ui->send, &QPushButton::clicked, this, &ShowMsg::send);
     connect(ui->recvIsHex, &QCheckBox::checkStateChanged, this, &ShowMsg::hex);
     connect(ui->sendIsHex, &QCheckBox::checkStateChanged, this, &ShowMsg::hex);
@@ -19,13 +19,13 @@ ShowMsg::~ShowMsg() {
     delete ui;
 }
 
-CCPS *ShowMsg::getCCPS() {
-    return ccps;
+CFUPS *ShowMsg::getCFUPS() {
+    return cfups;
 }
 
 void ShowMsg::recv() {
-    while (ccps->hasData()) {
-        auto data = ccps->nextPendingData();
+    while (cfups->hasData()) {
+        auto data = cfups->nextPendingData();
         recvData.append(data);
         if (ui->recvIsHex->isChecked())
             ui->recvData->appendPlainText(bytesToHexString(data));
@@ -37,9 +37,9 @@ void ShowMsg::recv() {
 void ShowMsg::send() {
     auto data = ui->sendData->toPlainText();
     if (ui->sendIsHex->isChecked())
-        ccps->send(hexStringToBytes(data));
+        cfups->send(hexStringToBytes(data));
     else
-        ccps->send(data.toUtf8());
+        cfups->send(data.toUtf8());
 }
 
 void ShowMsg::hex(Qt::CheckState state) {

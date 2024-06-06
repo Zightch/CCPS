@@ -1,9 +1,9 @@
-#include "CCPS.h"
+#include "CFUPS.h"
 #include "key.h"
-#include "CCPS_macro.h"
-#include "CCPSManager.h"
+#include "CFUPS_macro.h"
+#include "CFUPSManager.h"
 
-void CCPS::cmdRC_(const QByteArray &data) { // 已经被CCPSManager过滤过了, 不用二次判断
+void CFUPS::cmdRC_(const QByteArray &data) { // 已经被CFUPSManager过滤过了, 不用二次判断
     if (cs != -1 || initiative)return; // 连接状态: 未连接, 而且不能是主动连接
     IV = data.mid(3, IV_LEN); // 提取IV
     peerCrt = data.mid(3 + IV_LEN); // 提取对端证书
@@ -41,7 +41,7 @@ void CCPS::cmdRC_(const QByteArray &data) { // 已经被CCPSManager过滤过了,
     cs = 0; // 半连接
 }
 
-void CCPS::cmdACK_(bool NA, bool UD, const QByteArray &data) {
+void CFUPS::cmdACK_(bool NA, bool UD, const QByteArray &data) {
     if (!NA) return;
     if (data.size() < 3)return;
     unsigned short AID = (*(unsigned short *) (data.data() + 1));
@@ -67,14 +67,14 @@ void CCPS::cmdACK_(bool NA, bool UD, const QByteArray &data) {
                 sendBufLv2.append(localCrt); // 准备数据
             } else { // 连接成功
                 cs = 2;
-                cm->ccpsConnected_(this);
+                cm->cfupsConnected_(this);
                 hbt.start(hbtTime);
             }
         }
     } else if (sendWnd.contains(AID)) sendWnd[AID]->stop();
 }
 
-void CCPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
+void CFUPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
     if (cs == 0 && initiative && UD && data.size() > 5) {
         unsigned short SID = (*(unsigned short *) (data.data() + 1));
         unsigned short AID = (*(unsigned short *) (data.data() + 3));
@@ -128,21 +128,21 @@ void CCPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
                 sendBufLv2.append(localCrt); // 准备数据
             } else { // 连接成功
                 cs = 2;
-                cm->ccpsConnected_(this);
+                cm->cfupsConnected_(this);
                 hbt.start(hbtTime);
             }
         }
     } else if (RT)NA_ACK_(0, sharedKey);
 }
 
-void CCPS::cmdC_(bool NA, bool UD, const QByteArray &data) {
+void CFUPS::cmdC_(bool NA, bool UD, const QByteArray &data) {
     if (!NA) return; // NA必须有
     QByteArray userData;
     if (UD)userData = data.mid(1);
     close(userData);
 }
 
-void CCPS::cmdH_(bool RT, const QByteArray &data) {
+void CFUPS::cmdH_(bool RT, const QByteArray &data) {
     if (cs == 2) {
         unsigned short SID = (*(unsigned short *) (data.data() + 1));
         NA_ACK_(SID);

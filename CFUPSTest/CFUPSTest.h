@@ -6,23 +6,23 @@
 #include "NewConnect/NewConnect.h"
 #include "SetCert/SetCert.h"
 
-class CCPSManager;
+class CFUPSManager;
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class CCPSTest; }
+namespace Ui { class CFUPSTest; }
 QT_END_NAMESPACE
 
-class CCPSTest : public QWidget {
+class CFUPSTest : public QWidget {
 Q_OBJECT
 
 public:
-    explicit CCPSTest(QWidget * = nullptr);
+    explicit CFUPSTest(QWidget * = nullptr);
 
-    ~CCPSTest() override;
+    ~CFUPSTest() override;
 
 private:
-    Ui::CCPSTest *ui = nullptr;
-    CCPSManager *cm = nullptr;
+    Ui::CFUPSTest *ui = nullptr;
+    CFUPSManager *cm = nullptr;
     NewConnect newConnect;
     SetCert *setCert = nullptr;
 
@@ -30,7 +30,7 @@ private:
 
     void enableOperateBtn();
 
-    void connected(CCPS *);
+    void connected(CFUPS *);
 
     void showMsg();
 
