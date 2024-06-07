@@ -9,6 +9,9 @@
 #define THREAD_CHECK(ret) if (!threadCheck_(__FUNCTION__))return ret
 
 CFUPS::CFUPS(CFUPSManager *parent, const QHostAddress &IP, unsigned short p) : QObject(parent), IP(IP), port(p), cm(parent) {
+    int time = (retryNum + 1) * timeout;
+    if (time > 30000)time = 30000;
+    sexticTiming.setInterval(time);
     connect(&hbt, &QTimer::timeout, this, [&]() {
         auto *cdpt = newCDPT_();
         cdpt->cf = 0x05;

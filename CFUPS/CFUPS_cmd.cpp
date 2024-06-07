@@ -31,7 +31,7 @@ void CFUPS::cmdRC_(const QByteArray &data) { // 已经被CFUPSManager过滤过�
     cdpt->data = localCrt;
     cdpt->isNotEncrypt = true;
     if (peerCrt.size() == CRT_LEN || localCrt.size() == CRT_LEN) { // 如果任意一方使用证书
-        int time = (retryNum + 1) * timeout;
+        unsigned short time = (retryNum + 1) * timeout;
         if (time > 30000)time = 30000;
         cdpt->data.append((char *) &time, sizeof(time));
         sexticTiming.setInterval(time);
@@ -84,18 +84,18 @@ void CFUPS::cmdRC_ACK_(bool RT, bool UD, const QByteArray &data) {
             delete sendWnd[0];
             sendWnd.remove(0);
             peerCrt = data.mid(5);
-            if (peerCrt.size() != CRT_LEN && peerCrt.size() != LEN_25519 && peerCrt.size() != CRT_LEN + 4 && peerCrt.size() != LEN_25519 + 4) {
+            if (peerCrt.size() != CRT_LEN && peerCrt.size() != LEN_25519 && peerCrt.size() != CRT_LEN + 2 && peerCrt.size() != LEN_25519 + 2) {
                 cs = 3;
                 sharedKey.clear();
                 IV.clear();
                 close("证书长度不正确");
                 return;
             }
-            if (peerCrt.size() == LEN_25519 + 4 || peerCrt.size() == CRT_LEN + 4) { // 撇去后面4个字节的时间
-                auto tmp = peerCrt.mid(peerCrt.size() - 4, 4);
-                unsigned int time = *(unsigned int *) tmp.data();
+            if (peerCrt.size() == LEN_25519 + 2 || peerCrt.size() == CRT_LEN + 2) { // 2个字节的时间
+                auto tmp = peerCrt.mid(peerCrt.size() - 2, 2);
+                unsigned short time = *(unsigned short *) tmp.data();
                 if (time > 30000)time = 30000;
-                peerCrt = peerCrt.mid(0, peerCrt.size() - 4);
+                peerCrt = peerCrt.mid(0, peerCrt.size() - 2);
                 sexticTiming.setInterval((int) time);
             }
             if (!verify_()) {
