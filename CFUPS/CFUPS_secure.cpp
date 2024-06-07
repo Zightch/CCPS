@@ -21,15 +21,19 @@ bool CFUPS::verify_() {
     if (startTime > currTime || currTime > endTime)return false; // 证书过期
 
     unsigned char f = peerCrt[IP_FLAGS_INDEX];
-    if ((f != 0 && initiative)) { // 如果IP flags有数据并且我是主动连接的, 验证IP
-        QByteArray IPData;
-        IPData.resize(16);
+    if (f != 0 && initiative) { // 如果IP flags有数据并且我是主动连接的, 验证IP
         if (f != 4 && f != 16)return false; // IP flags不合法
         if (f == 4 && IP.protocol() != QHostAddress::IPv4Protocol)return false; // 协议对不上
         if (f == 16 && IP.protocol() != QHostAddress::IPv6Protocol)return false; // 协议对不上
-        if (f == 4)*((unsigned int *) IPData.data()) = IP.toIPv4Address();
+        QByteArray IPData;
+        IPData.resize(16, 0);
+        if (f == 4) {
+            auto ip = IP.toIPv4Address();
+            for (int i = 3, j = 0; i >= 0; i--, j++)
+                IPData[j] = ((char *) &ip)[i]; // 转大端序(QHostAddress的toIPv4Address返回的居然是小端序, 这是我没想到的)
+        }
         if (f == 16) {
-            Q_IPV6ADDR ipv6 = IP.toIPv6Address();
+            auto ipv6 = IP.toIPv6Address();
             for (int i = 0; i < 16; i++)
                 IPData[i] = (char) ipv6[i];
         }

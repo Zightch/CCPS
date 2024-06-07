@@ -60,10 +60,10 @@ void CFUPS::proc_(QByteArray data) { // 该函数只能被CFUPSManager调用
     if (NA && RT)return;
     if (1 <= cmd && cmd <= 5 && !UDL) {
         if (cmd == 1)cmdRC_(data); // RC指令, 请求
-        else if (cmd == 2)cmdACK_(NA, UD, data); // ACK指令, 应答
-        else if (cmd == 3)cmdRC_ACK_(RT, UD, data);
-        else if (cmd == 4)cmdC_(NA, UD, data); // C指令, 断开
-        else if (cmd == 5)cmdH_(RT, data); // 心跳
+        if (cmd == 2)cmdACK_(NA, UD, data); // ACK指令, 应答
+        if (cmd == 3)cmdRC_ACK_(RT, UD, data);
+        if (cmd == 4)cmdC_(NA, UD, data); // C指令, 断开
+        if (cmd == 5)cmdH_(RT, data); // 心跳
     } else {
         if (!NA) {//需要回复
             unsigned short SID = (*(unsigned short *) (data.data() + 1));
@@ -108,14 +108,8 @@ void CFUPS::proc_(QByteArray data) { // 该函数只能被CFUPSManager调用
             IV = newIV;
         }
     }
-    if (initiative && cs == 1 && ID == 3 && OID == 1) { // 对方已接受IV
-        // 连接成功
-        cs = 2;
-        sexticTiming.stop();
-        cm->cfupsConnected_(this);
-        hbt.start(hbtTime);
-    }
-    if (!initiative && cs == 1 && ID == 2 && OID == 2) { // 我已读取IV
+    if ((initiative && cs == 1 && ID == 3 && OID == 1) || (!initiative && cs == 1 && ID == 2 && OID == 2)) {
+        // 对方已接受IV或者我已接受IV
         // 连接成功
         cs = 2;
         sexticTiming.stop();
