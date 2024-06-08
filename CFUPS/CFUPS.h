@@ -63,8 +63,8 @@ private:
     // 接收 -> 接收窗口 -> 接收缓存 -> 可读缓存 -> 准备好读取
     // NA数据包不需要走发送缓存和发送窗口, 直接发送
 
-    unsigned short wndSize = 256; // 窗口大小, 最大65533
-    unsigned short dataBlockSize = 13; // 可靠传输时数据块大小, 测试用13, 生产环境默认1013, 最大65476
+    unsigned short wndSize = 96; // 窗口大小, 最大65533
+    unsigned short dataBlockSize = 965; // 可靠传输时数据块大小, 测试用13, 生产环境默认965, 最大65476
     QTimer hbt; // 心跳包定时器
     unsigned short hbtTime = 15000; // 心跳时间
     QHostAddress IP; // 远程主机IP

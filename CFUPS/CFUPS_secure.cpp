@@ -41,7 +41,7 @@ bool CFUPS::verify_() {
     }
 
     if (CA.isEmpty())return true; // 忽略CA验签
-    QByteArray pubKey = CA.mid(LEN_25519, LEN_25519);
+    QByteArray pubKey = CA.mid(ED25519_PUBKEY_INDEX, LEN_25519);
     QByteArray crtContent = peerCrt.mid(0, CRT_LEN - SIGN_LEN); // 证书内容
     QByteArray sign = peerCrt.mid(CRT_LEN - SIGN_LEN); // 签名数据
     QByteArray sha512;
