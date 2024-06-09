@@ -125,7 +125,7 @@ void CFUPS::send(const QByteArray &data) {
     THREAD_CHECK();
     if (cs != 2 || data.isEmpty())return;
     sendBufLv2.append(data);
-    updateWnd_();
+    QTimer::singleShot(0, [this]() { updateWnd_(); });
 }
 
 void CFUPS::sendNow(const QByteArray &data) {
