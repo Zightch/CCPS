@@ -11,3 +11,5 @@ QString bytesToHexString(const QByteArray &);
 QByteArray hexStringToBytes(const QString &);
 
 QByteArray dump(unsigned short);
+
+QByteArray dump(long long);

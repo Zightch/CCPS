@@ -53,6 +53,7 @@ private:
     unsigned short ID = 0; // 自己的包ID
     unsigned short OID = -1; // 对方当前包ID
 
+    QHash<unsigned short, long long> recvLastTime; // 接收窗口历史接收到的最大的时间
     QHash<unsigned short, CDPT *> sendWnd; // 发送窗口
     QHash<unsigned short, CFUPSDP> recvWnd; // 接收窗口
     QList<CDPT *> sendBufLv1; // 发送1级缓存
@@ -80,6 +81,8 @@ private:
     QByteArray sharedKey; // 共享密钥
     QByteArray IV; // IV数组
     QTimer sexticTiming; // 6次握手定时器
+    QSet<QByteArray> localRandSet; // 本地随机数集合
+    QSet<QByteArray> peerRandSet; // 对方随机数集合
 
     explicit CFUPS(CFUPSManager *, const QHostAddress &, unsigned short);
 
@@ -99,7 +102,7 @@ private:
 
     CDPT *newCDPT_(); // new一个CDPT
 
-    void NA_ACK_(unsigned short, const QByteArray & = {});
+    void NA_ACK_(unsigned short);
 
     bool tryGenKeyPair_();
 
@@ -107,13 +110,15 @@ private:
 
     void cmdRC_(const QByteArray &);
 
-    void cmdACK_(bool, bool, const QByteArray &);
+    void cmdACK_(bool, const QByteArray &);
 
     void cmdRC_ACK_(bool, bool, const QByteArray &);
 
     void cmdC_(bool, bool, const QByteArray &);
 
     void cmdH_(bool, const QByteArray &);
+
+    bool time_(unsigned short, long long);
 
     friend class CFUPSManager;
 

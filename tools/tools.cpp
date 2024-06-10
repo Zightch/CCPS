@@ -19,11 +19,17 @@ QString bytesToHexString(const QByteArray &data) {
 }
 
 QByteArray dump(unsigned short num) {
-    QByteArray tmp0;
-    char *tmp1 = (char *) &num;
-    tmp0.append(tmp1[0]);
-    tmp0.append(tmp1[1]);
-    return tmp0;
+    QByteArray tmp;
+    tmp.resize(2);
+    *(unsigned short *) tmp.data() = num;
+    return tmp;
+}
+
+QByteArray dump(long long num) {
+    QByteArray tmp;
+    tmp.resize(8);
+    *(long long *) tmp.data() = num;
+    return tmp;
 }
 
 QByteArray hexStringToBytes(const QString &str) {

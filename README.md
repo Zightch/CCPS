@@ -1,9 +1,10 @@
 # CFUPS协议
-### 版本6
+### 版本7
 ### CSG Framework Universal Protocol Secure
 ### 安全CSG框架通用协议
 
 ## 更新日志
+* 缩短随机数长度, 加入time以标识数据包发送的时间, 移除NA ACK数据包的UD(7)
 * CCPS更名CFUPS(6)
 * 定义`规定时间`, 加入随机数扰乱加密结果(5)
 * 加入证书和对端验证, 进行两次密钥交换(4)
@@ -41,14 +42,15 @@
 <table>
     <tr>
         <td>字节</td>
-        <td>0 ~ 31</td>
-        <td>32</td>
-        <td>33</td>
-        <td>34</td>
-        <td>35</td>
-        <td>36</td>
-        <td>37</td>
-        <td>38</td>
+        <td>0 ~ 15</td>
+        <td>16</td>
+        <td>17</td>
+        <td>18</td>
+        <td>19 ~ 26</td>
+        <td>27</td>
+        <td>28</td>
+        <td>29</td>
+        <td>30</td>
         <td>...</td>
     </tr>
     <tr>
@@ -56,35 +58,24 @@
         <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
+        <td>time</td>
         <td colspan=5></td>
     </tr>
     <tr>
         <td>S1</td>
         <td>rand</td>
         <td>cf</td>
+        <td colspan=2>SID</td>
+        <td>time</td>
         <td colspan=2>AID</td>
-        <td colspan=5></td>
+        <td colspan=3></td>
     </tr>
     <tr>
         <td>S2</td>
         <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
-        <td colspan=2>AID</td>
-        <td colspan=3></td>
-    </tr>
-    <tr>
-        <td>S3</td>
-        <td>rand</td>
-        <td>cf</td>
-        <td colspan=6>data</td>
-        <td>...</td>
-    </tr>
-    <tr>
-        <td>S4</td>
-        <td>rand</td>
-        <td>cf</td>
-        <td colspan=2>SID</td>
+        <td>time</td>
         <td colspan=4>data</td>
         <td>...</td>
     </tr>
@@ -93,22 +84,41 @@
         <td>rand</td>
         <td>cf</td>
         <td colspan=2>SID</td>
+        <td>time</td>
         <td colspan=2>AID</td>
         <td colspan=2>data</td>
         <td>...</td>
     </tr>
+</table>
+<table>
     <tr>
-        <td>S6</td>
+        <td>字节</td>
+        <td>0 ~ 15</td>
+        <td>16</td>
+        <td>17</td>
+        <td>18</td>
+        <td>19</td>
+        <td>...</td>
+    </tr>
+    <tr>
+        <td>S3</td>
         <td>rand</td>
         <td>cf</td>
         <td colspan=2>AID</td>
-        <td colspan=4>data</td>
+        <td colspan=2></td>
+    </tr>
+    <tr>
+        <td>S4</td>
+        <td>rand</td>
+        <td>cf</td>
+        <td colspan=3>data</td>
         <td>...</td>
     </tr>
 </table>
 
-* 在原有基础上增加S5和S6两种结构体
-* 头部加入32个字节的随机数用来扰乱加密后的规律性
+* 在原有基础上增加S5结构体
+* 头部加入16个字节的随机数用来扰乱加密后的规律性
+* 随机数必须全局唯一
 
 ## 证书
 参见分支`cert`  
@@ -129,7 +139,7 @@ sequenceDiagram
   deactivate P2
   activate P1
   Note left of P1: OID = 0 ID = 1
-  P1 ->> P2: UD NA ACK AID=0 data
+  P1 ->> P2: NA ACK AID=0
   deactivate P1
   Note right of P2: ID = 1 OID = 0
   Note over P1, P2: OID=0 ID=1 完成连接 ID=1 OID=0
@@ -191,3 +201,10 @@ sequenceDiagram
   注意: 这个密钥必须足够的随机  
   最后一次握手需要发起方(P1)用新共享密钥+旧IV再传一个新的IV给对方
 * 在任何握手或者数据传输过程中出现任何错误必须立刻C NA断开连接
+* 随机数必须全局唯一(不用严格全局唯一), 用于防止重放攻击  
+  每次发送新的数据包必须生成与之前没生成过的随机数  
+  以便于对方区分新数据包
+* 当原数据丢失(或被黑客截获), 对方收到了重发包并应答  
+  此时发送方有那个丢失的数据包的随机数, 但是接收方没有  
+  如果黑客这个时候进行重放, 就会造成问题  
+  可以通过CFUP原有的time机制来防止黑客重放
