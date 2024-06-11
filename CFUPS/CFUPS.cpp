@@ -63,7 +63,10 @@ void CFUPS::proc_(QByteArray data) { // 该函数只能被CFUPSManager调用
     bool UD = ((cf >> 6) & 0x01);
     bool NA = ((cf >> 5) & 0x01);
     bool RT = ((cf >> 4) & 0x01);
+    bool I = ((cf >> 3) & 0x01);
     auto cmd = (unsigned char) (cf & (unsigned char) 0x07);
+
+    if ((initiative && I) || (!initiative && !I))return; // 数据包来源判断
 
     if (NA && RT)return;
     if (1 <= cmd && cmd <= 5 && !UDL) {
@@ -226,6 +229,7 @@ void CFUPS::sendPackage_(CDPT *cdpt) { // 只负责构造数据包和发送
     }
     if ((cmd == 2) || (cmd == 3))data += dump(cdpt->AID);
     if ((cdpt->cf >> 6) & 0x01)data += cdpt->data;
+    if (initiative)data[0] |= (char) 0x08; // 主动性表明
     QByteArray rand;
     do {
         rand.clear();

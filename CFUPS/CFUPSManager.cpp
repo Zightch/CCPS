@@ -21,7 +21,7 @@ void CFUPSManager::proc_(const QHostAddress &IP, unsigned short port, const QByt
     if (data.size() != 11 + CRT_LEN + IV_LEN + HEAD_RAND_LEN && data.size() != 11 + LEN_25519 + IV_LEN + HEAD_RAND_LEN)return; // 数据包不完整
     QByteArray content = data.mid(HEAD_RAND_LEN); // 获取C风格字符串
     char cf = content.data()[0]; // 取cf
-    if (cf != 0x41 && cf != 0x51)return; // 如果不是连接请求, 直接丢弃
+    if (cf != 0x49 && cf != 0x59)return; // 如果不是连接请求, 直接丢弃
     unsigned short SID = (*(unsigned short *) (content.data() + 1)); // 提取SID
     if (SID != 0)return; // SID=0
     if (cfups.size() >= connectNum)return; // 连接上限
